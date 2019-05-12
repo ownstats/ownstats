@@ -1,0 +1,7 @@
+Resources:
+  AccessLogsDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: '#{AWS::AccountId}'
+      DatabaseInput:
+        Name: '${self:custom.sanitizedDomainName}-access-logs'

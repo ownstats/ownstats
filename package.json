@@ -1,0 +1,25 @@
+{
+  "name": "ownstats",
+  "version": "0.1.0",
+  "description": "Host your own website statistics analytics on AWS",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:tobilg/ownstats.git"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/tobilg/ownstats/issues"
+  },
+  "homepage": "https://github.com/tobilg/ownstats#readme",
+  "devDependencies": {
+    "serverless-cloudfront-invalidate": "^1.3.0",
+    "serverless-pseudo-parameters": "^2.4.0",
+    "serverless-s3-sync": "^1.8.0",
+    "serverless-stack-output": "^0.2.3"
+  },
+  "dependencies": {}
+}

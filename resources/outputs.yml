@@ -1,0 +1,5 @@
+Outputs:
+  CloudFrontDistributionId:
+    Description: CloudFront distribution id
+    Value:
+      Ref: CFDistribution

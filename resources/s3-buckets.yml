@@ -1,0 +1,9 @@
+Resources:
+  DistributionBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: ${self:service.name}
+  LogBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: ${self:service.name}-logs

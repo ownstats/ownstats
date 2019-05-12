@@ -1,0 +1,134 @@
+service:
+  name: ownstats-${self:custom.sanitizedDomainName}
+
+plugins:
+  - serverless-s3-sync
+  - serverless-pseudo-parameters
+  - serverless-stack-output
+  - serverless-cloudfront-invalidate
+
+custom:
+
+  # Store the domain name, otherwise use default
+  domainName: ${opt:domain}
+  sanitizedDomainName: ${file(./modules/sanitizeDomainName.js):sanitize}
+
+  # Output plugin configuration
+  output:
+    handler: modules/output.handler
+
+  # Prefixes
+  prefixes:
+    incoming: 'incoming/'
+    partitionedGz: 'partitioned-gz/'
+    partitionedParquet: 'partitioned-parquet/'
+    athenaQueryResults: 'athena-query-results/'
+
+  # CloudFront invalidation plugin configuration
+  cloudfrontInvalidate:
+    distributionIdKey: 'CloudFrontDistributionId'
+    items: # Add your files to invalidate here:
+      #- '/p.gif'
+      - '/script.js'
+
+  # S3 sync plugin configuration
+  s3Sync:
+    - bucketName: ${self:service.name}
+      localDir: src
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  region: ${opt:region, 'us-east-1'}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - athena:StartQueryExecution
+        - athena:GetQueryExecution
+      Resource: '*'
+    - Effect: Allow
+      Action:
+        - s3:ListBucket
+        - s3:GetBucketLocation
+      Resource: 'arn:aws:s3:::${self:service.name}-logs'
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+        - s3:DeleteObject
+      Resource: 'arn:aws:s3:::${self:service.name}-logs/*'
+    - Effect: Allow
+      Action:
+        - glue:CreatePartition
+        - glue:GetDatabase
+        - glue:GetTable
+        - glue:BatchCreatePartition
+        - glue:GetPartition
+        - glue:GetPartitions
+        - glue:CreateTable
+        - glue:DeleteTable
+        - glue:DeletePartition
+      Resource: '*'
+
+functions:
+  transformPartition:
+    handler: functions/transformPartition.handler
+    description: 'Transform Athena partitions'
+    memorySize: 256
+    timeout: 900
+    environment:
+      SOURCE_TABLE: '#{PartitionedGzTable}'
+      TARGET_TABLE: '#{PartitionedParquetTable}'
+      DATABASE: '#{AccessLogsDatabase}'
+      ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
+      ATHENA_CTAS_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.partitionedParquet}'
+    events:
+      - schedule: cron(1 * * * ? *)
+  createPartition:
+    handler: functions/createPartition.handler
+    description: 'Create Athena partitions'
+    memorySize: 256
+    timeout: 10
+    environment:
+      TABLE: '#{PartitionedGzTable}'
+      DATABASE: '#{AccessLogsDatabase}'
+      ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
+    events:
+      - schedule: cron(55 * * * ? *)
+  moveAccessLogs:
+    handler: functions/moveAccessLogs.handler
+    description: 'Move incoming files to partitioned prefix structure'
+    memorySize: 256
+    timeout: 30
+    environment:
+      TARGET_KEY_PREFIX: '${self:custom.prefixes.partitionedGz}'
+    events:
+      - s3:
+        bucket: photos
+        event: s3:ObjectCreated:*
+        rules:
+          - prefix: '${self:custom.prefixes.incoming}'
+
+package:
+  include:
+    - function/**
+  exclude:
+    - resources/**
+    - modules/**
+    - src/**
+    - .gitignore
+    - LICENSE
+    - package.json
+    - package-lock.json
+    - README.md
+
+resources:
+
+  - ${file(resources/cloudfront-origin-access-identity.yml)}
+  - ${file(resources/s3-buckets.yml)}
+  - ${file(resources/s3-policies.yml)}
+  - ${file(resources/cf-distribution.yml)}
+  - ${file(resources/glue-db.yml)}
+  - ${file(resources/glue-table-partitioned-gz.yml)}
+  - ${file(resources/glue-table-partitioned-parquet.yml)}
+  - ${file(resources/outputs.yml)}
