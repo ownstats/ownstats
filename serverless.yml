@@ -2,9 +2,9 @@ service:
   name: ownstats-${self:custom.sanitizedDomainName}
 
 plugins:
-  - serverless-s3-sync
   - serverless-pseudo-parameters
   - serverless-stack-output
+  - serverless-s3-sync
   - serverless-cloudfront-invalidate
 
 custom:
@@ -19,10 +19,10 @@ custom:
 
   # Prefixes
   prefixes:
-    incoming: 'incoming/'
-    partitionedGz: 'partitioned-gz/'
-    partitionedParquet: 'partitioned-parquet/'
-    athenaQueryResults: 'athena-query-results/'
+    incoming: incoming/
+    partitionedGz: partitioned-gz/
+    partitionedParquet: partitioned-parquet/
+    athenaQueryResults: athena-query-results/
 
   # CloudFront invalidation plugin configuration
   cloudfrontInvalidate:
