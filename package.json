@@ -16,10 +16,13 @@
   },
   "homepage": "https://github.com/tobilg/ownstats#readme",
   "devDependencies": {
+    "aws-sdk": "^2.458.0",
     "serverless-cloudfront-invalidate": "^1.3.0",
     "serverless-pseudo-parameters": "^2.4.0",
     "serverless-s3-sync": "^1.8.0",
     "serverless-stack-output": "^0.2.3"
   },
-  "dependencies": {}
+  "dependencies": {
+    "bunyan": "^1.8.12"
+  }
 }

@@ -28,7 +28,6 @@ custom:
   cloudfrontInvalidate:
     distributionIdKey: 'CloudFrontDistributionId'
     items: # Add your files to invalidate here:
-      #- '/p.gif'
       - '/script.js'
 
   # S3 sync plugin configuration
@@ -82,6 +81,7 @@ functions:
       DATABASE: '#{AccessLogsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
       ATHENA_CTAS_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.partitionedParquet}'
+      LOG_LEVEL: debug
     events:
       - schedule: cron(1 * * * ? *)
   createPartition:
@@ -93,6 +93,7 @@ functions:
       TABLE: '#{PartitionedGzTable}'
       DATABASE: '#{AccessLogsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
+      LOG_LEVEL: debug
     events:
       - schedule: cron(55 * * * ? *)
   moveAccessLogs:
@@ -102,6 +103,7 @@ functions:
     timeout: 30
     environment:
       TARGET_KEY_PREFIX: '${self:custom.prefixes.partitionedGz}'
+      LOG_LEVEL: debug
     events:
       - s3:
         bucket: photos

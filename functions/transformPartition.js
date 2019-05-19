@@ -1,4 +1,10 @@
 const util = require('./util');
+const bunyan = require('bunyan');
+
+const logger = bunyan.createLogger({
+    name: 'ownstatsLogger',
+    level: process.env.LOG_LEVEL || 'debug'
+});
 
 // AWS Glue Data Catalog database and tables
 const sourceTable = process.env.SOURCE_TABLE;
@@ -10,17 +16,18 @@ const athenaCtasResultsLocation = process.env.ATHENA_CTAS_RESULTS_LOCATION;
 
 // get the partition of 2hours ago
 exports.handler = async (event, context, callback) => {
-  var partitionHour = new Date(Date.now() - 120 * 60 * 1000);
-  var year = partitionHour.getUTCFullYear();
-  var month = (partitionHour.getUTCMonth() + 1).toString().padStart(2, '0');
-  var day = partitionHour.getUTCDate().toString().padStart(2, '0');
-  var hour = partitionHour.getUTCHours().toString().padStart(2, '0');
+  const requestLogger = logger.child({ requestId: context.awsRequestId });
+  const partitionHour = new Date(Date.now() - 120 * 60 * 1000);
+  const year = partitionHour.getUTCFullYear();
+  const month = (partitionHour.getUTCMonth() + 1).toString().padStart(2, '0');
+  const day = partitionHour.getUTCDate().toString().padStart(2, '0');
+  const hour = partitionHour.getUTCHours().toString().padStart(2, '0');
 
-  console.log('Transforming Partition', { year, month, day, hour });
+  requestLogger.debug('Transforming Partition', { year, month, day, hour });
 
-  var intermediateTable = `ctas_${year}_${month}_${day}_${hour}`;
+  const intermediateTable = `ctas_${year}_${month}_${day}_${hour}`;
 
-  var ctasStatement = `
+  const ctasStatement = `
     CREATE TABLE ${database}.${intermediateTable}
     WITH ( format='PARQUET',
         external_location='${athenaCtasResultsLocation}year=${year}/month=${month}/day=${day}/hour=${hour}',
@@ -32,9 +39,9 @@ exports.handler = async (event, context, callback) => {
         AND day = '${day}'
         AND hour = '${hour}';`;
 
-  var dropTableStatement = `DROP TABLE ${database}.${intermediateTable};`;
+  const dropTableStatement = `DROP TABLE ${database}.${intermediateTable};`;
 
-  var createNewPartitionStatement = `
+  const createNewPartitionStatement = `
     ALTER TABLE ${database}.${targetTable}
     ADD IF NOT EXISTS 
     PARTITION (
