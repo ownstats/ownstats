@@ -93,6 +93,8 @@ functions:
       TABLE: '#{PartitionedGzTable}'
       DATABASE: '#{AccessLogsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
+      S3_BUCKET: '#{LogBucket}'
+      S3_PREFIX: '${self:custom.prefixes.partitionedGz}'
       LOG_LEVEL: debug
     events:
       - schedule: cron(55 * * * ? *)
