@@ -3,19 +3,33 @@ service:
 
 plugins:
   - serverless-pseudo-parameters
+  - serverless-plugin-existing-s3
   - serverless-stack-output
   - serverless-s3-sync
-  - serverless-cloudfront-invalidate
+  #- serverless-cloudfront-invalidate
 
 custom:
 
   # Store the domain name, otherwise use default
   domainName: ${opt:domain}
-  sanitizedDomainName: ${file(./modules/sanitizeDomainName.js):sanitize}
+  sanitizedDomainName: ${file(./modules/sanitize.js):sanitizeDomainName}
 
   # Output plugin configuration
   output:
     handler: modules/output.handler
+
+  # S3 buckets
+  s3:
+    buckets:
+      logs: ${self:service.name}-logs
+      distribution: ${self:service.name}
+
+  # Glue database name
+  glue:
+    database: ${file(./modules/sanitize.js):sanitizeDatabaseName}
+    tables:
+      raw: access_logs_raw
+      optimized: access_logs
 
   # Prefixes
   prefixes:
@@ -49,13 +63,15 @@ provider:
       Action:
         - s3:ListBucket
         - s3:GetBucketLocation
-      Resource: 'arn:aws:s3:::${self:service.name}-logs'
+        - s3:GetBucketNotification
+        - s3:PutBucketNotification
+      Resource: 'arn:aws:s3:::${self:custom.s3.buckets.logs}'
     - Effect: Allow
       Action:
         - s3:PutObject
         - s3:GetObject
         - s3:DeleteObject
-      Resource: 'arn:aws:s3:::${self:service.name}-logs/*'
+      Resource: 'arn:aws:s3:::${self:custom.s3.buckets.logs}/*'
     - Effect: Allow
       Action:
         - glue:CreatePartition
@@ -81,6 +97,8 @@ functions:
       DATABASE: '#{AccessLogsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
       ATHENA_CTAS_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.partitionedParquet}'
+      S3_BUCKET: '#{LogBucket}'
+      S3_PREFIX: '${self:custom.prefixes.partitionedGz}'
       LOG_LEVEL: debug
     events:
       - schedule: cron(1 * * * ? *)
@@ -93,8 +111,6 @@ functions:
       TABLE: '#{PartitionedGzTable}'
       DATABASE: '#{AccessLogsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
-      S3_BUCKET: '#{LogBucket}'
-      S3_PREFIX: '${self:custom.prefixes.partitionedGz}'
       LOG_LEVEL: debug
     events:
       - schedule: cron(55 * * * ? *)
@@ -107,11 +123,12 @@ functions:
       TARGET_KEY_PREFIX: '${self:custom.prefixes.partitionedGz}'
       LOG_LEVEL: debug
     events:
-      - s3:
-        bucket: photos
-        event: s3:ObjectCreated:*
-        rules:
-          - prefix: '${self:custom.prefixes.incoming}'
+      - existingS3:
+          bucket: ${self:custom.s3.buckets.logs}
+          events: 
+            - s3:ObjectCreated:*
+          rules:
+            - prefix: '${self:custom.prefixes.incoming}'
 
 package:
   include:

@@ -20,7 +20,9 @@ const filenamePattern = '[^/]+$';
 
 exports.handler = async (event, context, callback) => {
   const requestLogger = logger.child({ requestId: context.awsRequestId });
+
   const moves = event.Records.map(record => {
+
     const bucket = record.s3.bucket.name;
     const sourceKey = record.s3.object.key;
     const sourceRegex = new RegExp(datePattern, 'g');
@@ -43,10 +45,10 @@ exports.handler = async (event, context, callback) => {
       };
       const deleteParams = { Bucket: bucket, Key: sourceKey };
       const copy = s3.copyObject(copyParams).promise();
-      const del = s3.deleteObject(deleteParams).promise();
 
       return copy.then(function () {
         requestLogger.debug(`Copied. Now deleting ${sourceKey}.`);
+        const del = s3.deleteObject(deleteParams).promise();
         requestLogger.debug(`Deleted ${sourceKey}.`);
         return del;
       }, function (reason) {
@@ -55,6 +57,8 @@ exports.handler = async (event, context, callback) => {
       });
 
     }
+    
   });
+
   await Promise.all(moves);
 };

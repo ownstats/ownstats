@@ -7,13 +7,13 @@ module.exports.handler = (data, serverless, options) => {
     const domain = serverless.providers.aws.options.domain;
 
     const scriptTemplate = `
-    if (window.location.hostname == '${domain}') {
-        var p = new Image(1,1);
-        var e = encodeURIComponent;
-        p.src = "${pixelUrl}?u=" +
-          e(window.location.pathname) + (document.referrer ? "&r=" + e(document.referrer) : "");
-    }
-    `;
+if (window.location.hostname == '${domain}') {
+    var p = new Image(1,1);
+    var e = encodeURIComponent;
+    p.src = "${pixelUrl}?u=" +
+        e(window.location.pathname) + (document.referrer ? "&r=" + e(document.referrer) : "");
+}
+`;
 
     const scriptPath = path.join(__dirname, '../', 'src/script.js');
     fs.writeFileSync(scriptPath, scriptTemplate);

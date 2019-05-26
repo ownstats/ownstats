@@ -12,6 +12,7 @@ async function waitForQueryExecution(queryExecutionId) {
         }).promise();
         const state = data.QueryExecution.Status.State;
         if (state === 'SUCCEEDED') {
+            console.log(`Query ${queryExecutionId} succeeded`);
             return;
         } else if (state === 'FAILED' || state === 'CANCELLED') {
             throw Error(`Query ${queryExecutionId} failed: ${data.QueryExecution.Status.StateChangeReason}`);

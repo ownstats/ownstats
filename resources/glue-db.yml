@@ -4,4 +4,4 @@ Resources:
     Properties:
       CatalogId: '#{AWS::AccountId}'
       DatabaseInput:
-        Name: '${self:custom.sanitizedDomainName}-access-logs'
+        Name: '${self:custom.glue.database}'

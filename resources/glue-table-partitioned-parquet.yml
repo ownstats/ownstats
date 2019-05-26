@@ -5,7 +5,7 @@ Resources:
       CatalogId: '#{AWS::AccountId}'
       DatabaseName: '#{AccessLogsDatabase}'
       TableInput:
-        Name: 'partitioned_parquet'
+        Name: '${self:custom.glue.tables.optimized}'
         Description: 'Parquet format access logs as transformed from gzip version'
         TableType: EXTERNAL_TABLE
         Parameters: { 'has_encrypted_data': 'false', 'parquet.compression': 'SNAPPY' }
@@ -72,7 +72,7 @@ Resources:
           - Name: filestatus
             Type: string
           - Name: encryptedfields
-            Type: int
+            Type: string
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
           Location: 's3://#{LogBucket}/${self:custom.prefixes.partitionedParquet}'
           SerdeInfo:

@@ -2,8 +2,8 @@ Resources:
   DistributionBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: ${self:service.name}
+      BucketName: ${self:custom.s3.buckets.distribution}
   LogBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: ${self:service.name}-logs
+      BucketName: ${self:custom.s3.buckets.logs}
