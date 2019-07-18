@@ -50,7 +50,8 @@ exports.handler = async (event, context, callback) => {
         WHERE year = '${year}'
             AND month = '${month}'
             AND day = '${day}'
-            AND hour = '${hour}';`;
+            AND hour = '${hour}'
+            AND uri NOT IN ('/favicon.ico', '/script.js');`;
     
       requestLogger.debug(ctasStatement);
     
