@@ -6,7 +6,7 @@ plugins:
   - serverless-plugin-existing-s3
   - serverless-stack-output
   - serverless-s3-sync
-  #- serverless-cloudfront-invalidate
+  - serverless-cloudfront-invalidate
 
 custom:
 
@@ -16,7 +16,7 @@ custom:
 
   # Output plugin configuration
   output:
-    handler: modules/output.handler
+    handler: modules/renderScript.handler
 
   # S3 buckets
   s3:
@@ -37,6 +37,9 @@ custom:
     partitionedGz: partitioned-gz/
     partitionedParquet: partitioned-parquet/
     athenaQueryResults: athena-query-results/
+
+  # For caching with CloudFront in general, see
+  # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html#ExpirationDownloadDist
 
   # CloudFront invalidation plugin configuration
   cloudfrontInvalidate:
