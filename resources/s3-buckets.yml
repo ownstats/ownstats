@@ -3,11 +3,6 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: ${self:custom.s3.buckets.distribution}
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: 'true'
-        BlockPublicPolicy: 'true'
-        IgnorePublicAcls: 'true'
-        RestrictPublicBuckets: 'true'
   LogBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
