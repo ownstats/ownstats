@@ -5,6 +5,8 @@ module.exports.handler = (data, serverless, options) => {
     // CloudFront distribution name can be found under 'data.CloudFrontDistributionDomainName'
     // Domain option can be found under serverless.providers.aws.options.domain'
 
+    const debugMode = serverless.providers.aws.options['debug-mode'] ? new Boolean(serverless.providers.aws.options['debug-mode']) : false;
+
     const scriptTemplate = `
 (function(window, hostname, path, debugMode) {
     // Cancel if not run in browser
@@ -130,10 +132,14 @@ module.exports.handler = (data, serverless, options) => {
         if (con && con.error) con.error('ownstats: ' + e);
     }
 
-})(window, ${data.CloudFrontDistributionDomainName}, '/p.gif', debugMode);
+})(window, '${data.CloudFrontDistributionDomainName}', '/p.gif', ${debugMode});
 `;
 
     const scriptPath = path.join(__dirname, '../', 'src/script.js');
+    const pixelUrl = `https://${data.CloudFrontDistributionDomainName}/p.gif`;	
+    const scriptUrl = `https://${data.CloudFrontDistributionDomainName}/script.js`;
+
+    // Write file
     fs.writeFileSync(scriptPath, scriptTemplate);
 
     serverless.cli.log(`Written script.js template: ${scriptPath}`);
