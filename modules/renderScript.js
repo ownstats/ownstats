@@ -5,6 +5,8 @@ module.exports.handler = (data, serverless, options) => {
     // CloudFront distribution name can be found under 'data.CloudFrontDistributionDomainName'
     // Domain option can be found under serverless.providers.aws.options.domain'
 
+    const scriptName = 'hello.js';
+
     const debugMode = serverless.providers.aws.options['debug-mode'] ? new Boolean(serverless.providers.aws.options['debug-mode']) : false;
 
     const scriptTemplate = `
@@ -47,12 +49,13 @@ module.exports.handler = (data, serverless, options) => {
             var refs = refMatches ? refMatches.map(function(m) { return m.split('=')[1] }) : [];
 
             // UTM
-            var utmMatches = loc.search.match(/[?&](utm_campaign|utm_medium|utm_content|utm_term)=([^?&]+)/gi);
+            var utmMatches = loc.search.match(/[?&](utm_source|utm_campaign|utm_medium|utm_content|utm_term)=([^?&]+)/gi);
+            var utms = utmMatches ? utmMatches : [];
     
             // Populate
             var data = { u: url };
             if (userAgent) data.ua = userAgent;
-            if (refs && refs[0]) data.ur = refs[0];
+            if (refs && refs[0]) data.s = refs[0];
             if (doc.referrer && !isPushState) data.r = doc.referrer;
             if (window.innerWidth) data.iw = window.innerWidth;
             if (window.innerWidth) data.ih = window.innerHeight;
@@ -64,11 +67,11 @@ module.exports.handler = (data, serverless, options) => {
             if (nav.deviceMemory) data.m = nav.deviceMemory;
             if (nav.hardwareConcurrency) data.c = nav.hardwareConcurrency;
 
-            if (utmMatches.length > 0) {
-                utmMatches.forEach(function (m) {
+            if (utms.length > 0) {
+                utms.forEach(function (m) {
                     var temp = m.split('=');
                     var name = temp[0].split('_');
-                    data['u'+name.substring(0,1)] = temp[1];
+                    data['u'+name.substring(0,2)] = temp[1];
                 });
             }
     
@@ -91,13 +94,6 @@ module.exports.handler = (data, serverless, options) => {
             p.id = 'ownsp';
             p.src = reqUrl + '?' + qs.join('&');
             if (debugMode) con.log('ownstats: ' + p.src);
-            document.body.appendChild(p);
-            p.onload = function() {
-                // Remove image from DOM
-                var ownsp = document.getElementById('ownsp');
-                ownsp.parentNode.removeChild(ownsp);
-            };
-
         }
 
         // Normal navigation
@@ -135,9 +131,9 @@ module.exports.handler = (data, serverless, options) => {
 })(window, '${data.CloudFrontDistributionDomainName}', '/p.gif', ${debugMode});
 `;
 
-    const scriptPath = path.join(__dirname, '../', 'src/script.js');
+    const scriptPath = path.join(__dirname, '../', 'src/', scriptName);
     const pixelUrl = `https://${data.CloudFrontDistributionDomainName}/p.gif`;	
-    const scriptUrl = `https://${data.CloudFrontDistributionDomainName}/script.js`;
+    const scriptUrl = `https://${data.CloudFrontDistributionDomainName}/${scriptName}`;
 
     // Write file
     fs.writeFileSync(scriptPath, scriptTemplate);

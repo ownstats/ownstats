@@ -45,7 +45,7 @@ custom:
   cloudfrontInvalidate:
     distributionIdKey: 'CloudFrontDistributionId'
     items: # Add your files to invalidate here:
-      - '/script.js'
+      - '/hello.js'
 
   # S3 sync plugin configuration
   s3Sync:
