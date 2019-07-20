@@ -29,49 +29,53 @@ Resources:
             Type: string
           - Name: bytes
             Type: bigint
-          - Name: requestip
-            Type: string
-          - Name: method
-            Type: string
-          - Name: host
-            Type: string
-          - Name: uri
+          - Name: request_ip
             Type: string
           - Name: status
             Type: int
           - Name: referrer
             Type: string
-          - Name: useragent
+          - Name: user_agent
             Type: string
-          - Name: querystring
+          - Name: result_type
             Type: string
-          - Name: cookie
+          - Name: response_result_type
             Type: string
-          - Name: resulttype
-            Type: string
-          - Name: requestid
-            Type: string
-          - Name: hostheader
-            Type: string
-          - Name: requestprotocol
-            Type: string
-          - Name: requestbytes
+          - Name: request_bytes
             Type: bigint
-          - Name: timetaken
+          - Name: time_taken
             Type: float
-          - Name: xforwardedfor
+          - Name: x_forwarded_for
             Type: string
-          - Name: sslprotocol
+          - Name: http_version
             Type: string
-          - Name: sslcipher
+          - Name: timezone
             Type: string
-          - Name: responseresulttype
+          - Name: device_outer_resolution
             Type: string
-          - Name: httpversion
+          - Name: device_inner_resolution
             Type: string
-          - Name: filestatus
+          - Name: device_color_depth
+            Type: int
+          - Name: device_platform
             Type: string
-          - Name: encryptedfields
+          - Name: device_memory
+            Type: int
+          - Name: device_cores
+            Type: int
+          - Name: browser_language
+            Type: string
+          - Name: source
+            Type: string
+          - Name: utm_source
+            Type: string
+          - Name: utm_campaign
+            Type: string
+          - Name: utm_medium
+            Type: string
+          - Name: utm_content
+            Type: string
+          - Name: utm_term
             Type: string
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
           Location: 's3://#{LogBucket}/${self:custom.prefixes.partitionedParquet}'

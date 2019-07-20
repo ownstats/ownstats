@@ -45,13 +45,51 @@ exports.handler = async (event, context, callback) => {
         WITH ( format='PARQUET',
             external_location='${athenaCtasResultsLocation}year=${year}/month=${month}/day=${day}/hour=${hour}',
             parquet_compression = 'SNAPPY')
-        AS SELECT *
-        FROM ${database}.${sourceTable}
-        WHERE year = '${year}'
+        AS SELECT 
+          year,
+          month,
+          day,
+          hour,
+          date,
+          time,
+          location,
+          bytes,
+          requestip as request_ip,
+          status,
+          referrer,
+          url_decode(url_extract_parameter(qs, 'ua')) as user_agent,
+          resulttype as result_type,
+          responseresulttype as response_result_type,
+          requestbytes as request_bytes,
+          timetaken as time_taken,
+          case when xforwardedfor = '-' then NULL else xforwardedfor end as x_forwarded_for,
+          httpversion as http_version,
+          url_decode(url_extract_parameter(qs, 'tz')) as timezone,
+          concat(url_extract_parameter(qs, 'w'), 'x', url_extract_parameter(qs, 'h')) as device_outer_resolution,
+          concat(url_extract_parameter(qs, 'iw'), 'x', url_extract_parameter(qs, 'ih')) as device_inner_resolution,
+          url_decode(url_extract_parameter(qs, 'd')) as device_color_depth,
+          url_decode(url_extract_parameter(qs, 'p')) as device_platform,
+          url_decode(url_extract_parameter(qs, 'm')) as device_memory,
+          url_decode(url_extract_parameter(qs, 'c')) as device_cores,
+          url_decode(url_extract_parameter(qs, 'l')) as browser_language,
+          url_decode(url_extract_parameter(qs, 's')) as source,
+          url_decode(url_extract_parameter(qs, 'uso')) as utm_source,
+          url_decode(url_extract_parameter(qs, 'uca')) as utm_campaign,
+          url_decode(url_extract_parameter(qs, 'ume')) as utm_medium,
+          url_decode(url_extract_parameter(qs, 'uco')) as utm_content,
+          url_decode(url_extract_parameter(qs, 'ute')) as utm_term
+        FROM (
+          SELECT
+            concat(uri, '?', querystring) as qs,
+            *
+          FROM ${database}.${sourceTable}
+          WHERE year = '${year}'
             AND month = '${month}'
             AND day = '${day}'
             AND hour = '${hour}'
-            AND uri NOT IN ('/favicon.ico', '/script.js');`;
+            AND uri = '/p.gif'
+            AND querystring <> '-'
+          )`;
     
       requestLogger.debug(ctasStatement);
     

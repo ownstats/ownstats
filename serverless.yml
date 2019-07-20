@@ -28,8 +28,8 @@ custom:
   glue:
     database: ${file(./modules/sanitize.js):sanitizeDatabaseName}
     tables:
-      raw: access_logs_raw
-      optimized: access_logs
+      raw: access_logs
+      optimized: page_views
 
   # Prefixes
   prefixes:
@@ -139,6 +139,7 @@ package:
   exclude:
     - resources/**
     - modules/**
+    - queries/**
     - src/**
     - .gitignore
     - LICENSE
