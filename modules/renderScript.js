@@ -69,8 +69,8 @@ module.exports.handler = (data, serverless, options) => {
 
             if (utms.length > 0) {
                 utms.forEach(function (m) {
-                    var temp = m.split('=');
-                    var name = temp[0].split('_');
+                    var temp = m.replace('?', '').replace('&', '').split('=');
+                    var name = temp[0].split('_')[1];
                     data['u'+name.substring(0,2)] = temp[1];
                 });
             }
