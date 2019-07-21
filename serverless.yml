@@ -30,6 +30,7 @@ custom:
     tables:
       raw: access_logs_raw
       optimized: page_views
+      edgeLocations: edge_locations
 
   # Prefixes
   prefixes:
@@ -37,6 +38,7 @@ custom:
     partitionedGz: partitioned-gz/
     partitionedParquet: partitioned-parquet/
     athenaQueryResults: athena-query-results/
+    edgeLocations: edge-locations/
 
   # For caching with CloudFront in general, see
   # https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html#ExpirationDownloadDist
@@ -49,8 +51,11 @@ custom:
 
   # S3 sync plugin configuration
   s3Sync:
-    - bucketName: ${self:service.name}
+    - bucketName: ${self:custom.s3.buckets.distribution}
       localDir: src
+    - bucketName: ${self:custom.s3.buckets.logs}
+      localDir: data
+      bucketPrefix: ${self:custom.prefixes.edgeLocations}
 
 provider:
   name: aws
@@ -156,4 +161,5 @@ resources:
   - ${file(resources/glue-db.yml)}
   - ${file(resources/glue-table-partitioned-gz.yml)}
   - ${file(resources/glue-table-partitioned-parquet.yml)}
+  - ${file(resources/glue-table-edge-locations.yml)}
   - ${file(resources/outputs.yml)}

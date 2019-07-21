@@ -25,7 +25,9 @@ Resources:
             Type: date
           - Name: time
             Type: string
-          - Name: location
+          - Name: edge_location
+            Type: string
+          - Name: edge_location_prefix
             Type: string
           - Name: bytes
             Type: bigint

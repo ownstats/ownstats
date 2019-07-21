@@ -7,8 +7,8 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: ${self:custom.s3.buckets.logs}
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: 'true'
-        BlockPublicPolicy: 'true'
-        IgnorePublicAcls: 'true'
-        RestrictPublicBuckets: 'true'
+      #PublicAccessBlockConfiguration:
+        #BlockPublicAcls: 'true'
+        #BlockPublicPolicy: 'true'
+        #IgnorePublicAcls: 'true'
+        #RestrictPublicBuckets: 'true'

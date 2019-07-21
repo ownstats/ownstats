@@ -1,0 +1,34 @@
+Resources:
+  EdgeLocationTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: '#{AWS::AccountId}'
+      DatabaseName: '#{AccessLogsDatabase}'
+      TableInput:
+        Name: '${self:custom.glue.tables.edgeLocations}'
+        Description: 'Predefined edge location table'
+        TableType: EXTERNAL_TABLE
+        Parameters: { "classification": "csv" }
+        StorageDescriptor:
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          Columns:
+          - Name: edge_location_prefix
+            Type: string
+          - Name: city
+            Type: string
+          - Name: state
+            Type: string
+          - Name: country
+            Type: string
+          - Name: count
+            Type: int
+          - Name: latitude
+            Type: float
+          - Name: longitude
+            Type: float
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          Location: 's3://#{LogBucket}/${self:custom.prefixes.edgeLocations}'
+          SerdeInfo:
+            Parameters:
+              field.delim: ","
+            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
