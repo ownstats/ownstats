@@ -28,7 +28,7 @@ custom:
   glue:
     database: ${file(./modules/sanitize.js):sanitizeDatabaseName}
     tables:
-      raw: access_logs
+      raw: access_logs_raw
       optimized: page_views
 
   # Prefixes
