@@ -9,8 +9,12 @@
     "type": "git",
     "url": "git@github.com:tobilg/ownstats.git"
   },
-  "author": "",
-  "license": "UNLICENSED",
+  "author": {
+    "name": "TobiLG",
+    "email": "tobilg@gmail.com",
+    "url": "https://github.com/tobilg"
+  },
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/tobilg/ownstats/issues"
   },
