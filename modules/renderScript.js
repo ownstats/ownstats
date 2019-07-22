@@ -53,7 +53,7 @@ module.exports.handler = (data, serverless, options) => {
             var utms = utmMatches ? utmMatches : [];
     
             // Populate
-            var data = { u: url };
+            var data = { u: url, hn: loc.hostname };
             if (userAgent) data.ua = userAgent;
             if (refs && refs[0]) data.s = refs[0];
             if (doc.referrer && !isPushState) data.r = doc.referrer;

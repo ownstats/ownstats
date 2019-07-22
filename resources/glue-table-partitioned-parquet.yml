@@ -31,7 +31,9 @@ Resources:
             Type: string
           - Name: bytes
             Type: bigint
-          - Name: request_ip
+          - Name: host_name
+            Type: string
+          - Name: url
             Type: string
           - Name: status
             Type: int
