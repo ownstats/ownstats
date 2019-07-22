@@ -17,6 +17,7 @@ Resources:
                   - - 'origin-access-identity/cloudfront/'
                     - '#{CloudFrontOriginAccessIdentity}'
         DefaultCacheBehavior:
+          Compress: 'true'
           AllowedMethods:
             - GET
             - HEAD

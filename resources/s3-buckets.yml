@@ -3,6 +3,15 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: ${self:custom.s3.buckets.distribution}
+      CorsConfiguration:
+        CorsRules: 
+        - AllowedHeaders: 
+            - 'Content-Length'
+          AllowedMethods:
+           - GET
+          AllowedOrigins: 
+            - '*'
+          Id: 'compressed-js-rule'
   LogBucket:
     Type: 'AWS::S3::Bucket'
     Properties:

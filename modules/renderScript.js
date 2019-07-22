@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 module.exports.handler = (data, serverless, options) => {
     // CloudFront distribution name can be found under 'data.CloudFrontDistributionDomainName'
@@ -135,10 +136,18 @@ module.exports.handler = (data, serverless, options) => {
     const pixelUrl = `https://${data.CloudFrontDistributionDomainName}/p.gif`;	
     const scriptUrl = `https://${data.CloudFrontDistributionDomainName}/${scriptName}`;
 
-    // Write file
-    fs.writeFileSync(scriptPath, scriptTemplate);
+    // Compress script template
+    zlib.gzip(scriptTemplate, function (error, compressedScriptTemplate) {
+        if (error) {
+            serverless.cli.log(`Error compressing hello.js script: ${error}`);
+        } else {
+            // Write file
+            fs.writeFileSync(scriptPath, compressedScriptTemplate);
 
-    serverless.cli.log(`Written script.js template: ${scriptPath}`);
-    serverless.cli.log(`Tracking pixel URL: ${pixelUrl}`);
-    serverless.cli.log(`Tracking script URL: ${scriptUrl}`);
+            serverless.cli.log(`Written hello.js template: ${scriptPath}`);
+            serverless.cli.log(`Tracking pixel URL: ${pixelUrl}`);
+            serverless.cli.log(`Tracking script URL: ${scriptUrl}`);
+        }
+    });
+
 };

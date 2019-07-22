@@ -53,6 +53,10 @@ custom:
   s3Sync:
     - bucketName: ${self:custom.s3.buckets.distribution}
       localDir: src
+      params:
+        - hello.js:
+            ContentType: 'application/javascript'
+            ContentEncoding: 'gzip'
     - bucketName: ${self:custom.s3.buckets.logs}
       localDir: data
       bucketPrefix: ${self:custom.prefixes.edgeLocations}
