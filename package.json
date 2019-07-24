@@ -25,7 +25,8 @@
     "serverless-plugin-existing-s3": "^2.4.0",
     "serverless-pseudo-parameters": "^2.4.0",
     "serverless-s3-sync": "^1.8.0",
-    "serverless-stack-output": "^0.2.3"
+    "serverless-stack-output": "^0.2.3",
+    "uglify-js": "^3.6.0"
   },
   "dependencies": {
     "bunyan": "^1.8.12"

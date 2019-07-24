@@ -1,13 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const UglifyJS = require("uglify-js");
 
 module.exports.handler = (data, serverless, options) => {
     // CloudFront distribution name can be found under 'data.CloudFrontDistributionDomainName'
     // Domain option can be found under serverless.providers.aws.options.domain'
 
     const scriptName = 'hello.js';
-
+    const imageName = 'hello.gif';
     const debugMode = serverless.providers.aws.options['debug-mode'] ? new Boolean(serverless.providers.aws.options['debug-mode']) : false;
 
     const scriptTemplate = `
@@ -129,21 +130,26 @@ module.exports.handler = (data, serverless, options) => {
         if (con && con.error) con.error('ownstats: ' + e);
     }
 
-})(window, '${data.CloudFrontDistributionDomainName}', '/p.gif', ${debugMode});
+})(window, '${data.CloudFrontDistributionDomainName}', '/${imageName}', ${debugMode});
 `;
 
     const scriptPath = path.join(__dirname, '../', 'src/', scriptName);
-    const pixelUrl = `https://${data.CloudFrontDistributionDomainName}/p.gif`;	
+    const pixelUrl = `https://${data.CloudFrontDistributionDomainName}/${imageName}`;	
     const scriptUrl = `https://${data.CloudFrontDistributionDomainName}/${scriptName}`;
 
+    // Minify script template
+    const minifiedScriptTemplate = UglifyJS.minify(scriptTemplate);
+    serverless.cli.log('Minified hello.js');
+
     // Compress script template
-    zlib.gzip(scriptTemplate, function (error, compressedScriptTemplate) {
+    zlib.gzip(minifiedScriptTemplate.code, function (error, compressedScriptTemplate) {
         if (error) {
             serverless.cli.log(`Error compressing hello.js script: ${error}`);
         } else {
             // Write file
             fs.writeFileSync(scriptPath, compressedScriptTemplate);
 
+            serverless.cli.log('Compressed hello.js');
             serverless.cli.log(`Written hello.js template: ${scriptPath}`);
             serverless.cli.log(`Tracking pixel URL: ${pixelUrl}`);
             serverless.cli.log(`Tracking script URL: ${scriptUrl}`);
