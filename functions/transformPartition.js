@@ -89,7 +89,7 @@ exports.handler = async (event, context, callback) => {
             AND month = '${month}'
             AND day = '${day}'
             AND hour = '${hour}'
-            AND uri = '/p.gif'
+            AND uri = '/hello.gif'
             AND querystring <> '-'
           )`;
     
