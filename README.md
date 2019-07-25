@@ -9,9 +9,9 @@ Host your own privacy-effective website statistics on AWS via CloudFront, S3, Gl
 * A S3 bucket containing the assets for gathering website statistics (`hello.js` and `hello.gif`)
 * A S3 bucket for the CloudFront CDN logs
 * A CloudFront distribution for global hosting of the assets via CDN
-* A Lambda function for automatic movement of the raw CloudFront logs into a folder structure which benefits Athena partitioning (see [functions/moveAccessLogs.js](functions/moveAccessLogs.js))
-* A Lambda function which creates Athena partitions for the raw CloudFront logs (see [functions/createPartition.js](functions/createPartition.js))
-* A Lambda function which transforms the raw CloudFront logs into a page view table, and also creates the relevant Athena partitions (see [functions/transformPartition.js](functions/transformPartition.js))
+* A Lambda function for automatic movement of the raw CloudFront logs into a folder structure which benefits Athena partitioning (see [functions/moveAccessLogs.js](https://github.com/ownstats/ownstats/blob/master/functions/moveAccessLogs.js))
+* A Lambda function which creates Athena partitions for the raw CloudFront logs (see [functions/createPartition.js](https://github.com/ownstats/ownstats/blob/master/functions/createPartition.js))
+* A Lambda function which transforms the raw CloudFront logs into a page view table, and also creates the relevant Athena partitions (see [functions/transformPartition.js](https://github.com/ownstats/ownstats/blob/master/functions/transformPartition.js))
 * A set of Glue tables  
   * `access_logs_raw`: Holds the raw CloudFront logs
   * `page_views`: Contains the page views derived from `access_logs_raw`
