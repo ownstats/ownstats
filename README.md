@@ -289,6 +289,109 @@ and
   day = '15'
 ```
 
+### IAM policy
+To deploy the stack, this example policy can be used:
+
+```javascript
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ownstats",
+            "Effect": "Allow",
+            "Action": [
+                "athena:GetQueryExecution",
+                "athena:StartQueryExecution",
+                "cloudformation:CreateUploadBucket",
+                "cloudformation:CancelUpdateStack",
+                "cloudformation:CreateStack",
+                "cloudformation:DeleteStack",
+                "cloudformation:UpdateStack",
+                "cloudformation:UpdateTerminationProtection",
+                "cloudformation:CreateChangeSet",
+                "cloudformation:Describe*",
+                "cloudformation:ContinueUpdateRollback",
+                "cloudformation:EstimateTemplateCost",
+                "cloudformation:PreviewStackUpdate",
+                "cloudformation:List*",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:ValidateTemplate",
+                "cloudformation:Get*"
+                "cloudfront:CreateCloudFrontOriginAccessIdentity",
+                "cloudfront:CreateDistribution",
+                "cloudfront:CreateInvalidation",
+                "cloudfront:DeleteCloudFrontOriginAccessIdentity",
+                "cloudfront:GetCloudFrontOriginAccessIdentityConfig",
+                "cloudfront:GetDistribution",
+                "cloudfront:TagResource",
+                "cloudfront:UpdateDistribution",
+                "glue:BatchCreatePartition",
+                "glue:CreateDatabase",
+                "glue:CreatePartition",
+                "glue:CreateTable",
+                "glue:DeleteDatabase",
+                "glue:DeletePartition",
+                "glue:DeleteTable",
+                "glue:GetDatabase",
+                "glue:GetPartition",
+                "glue:GetPartitions",
+                "glue:GetTable",
+                "glue:UpdateTable",
+                "iam:CreateRole",
+                "iam:DeleteRole",
+                "iam:PutRolePolicy",
+                "iam:DeleteRolePolicy",
+                "iam:GetRole",
+                "lambda:AddPermission",
+                "lambda:InvokeFunction",
+                "lambda:DeleteFunction",
+                "lambda:PublishVersion",
+                "lambda:List*",
+                "lambda:CreateFunction",
+                "lambda:Get*",
+                "lambda:RemovePermission",
+                "lambda:CreateAlias",
+                "lambda:Update*",
+                "logs:CreateLogGroup",
+                "logs:DeleteLogGroup",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:FilterLogEvents",
+                "logs:GetLogEvents",
+                "logs:PutRetentionPolicy",
+                "s3:CreateBucket",
+                "s3:DeleteBucket",
+                "s3:DeleteBucketPolicy",
+                "s3:DeleteBucketWebsite",
+                "s3:DeleteObject",
+                "s3:DeleteObjectVersion",
+                "s3:GetBucketAcl",
+                "s3:GetBucketLocation",
+                "s3:GetBucketNotification",
+                "s3:GetBucketPolicy",
+                "s3:GetBucketWebsite",
+                "s3:GetObject",
+                "s3:GetObjectVersion",
+                "s3:ListAllMyBuckets",
+                "s3:ListBucket",
+                "s3:ListBucketMultipartUploads",
+                "s3:ListBucketVersions",
+                "s3:PutBucketAcl",
+                "s3:PutBucketCORS",
+                "s3:PutBucketNotification",
+                "s3:PutBucketPolicy",
+                "s3:PutBucketTagging",
+                "s3:PutBucketWebsite",
+                "s3:PutEncryptionConfiguration",
+                "s3:PutObject",
+                "s3:PutPublicAccessBlock"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
 ## Removal
 You can remove the stack by running
 
