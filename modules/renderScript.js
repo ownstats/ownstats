@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
-const UglifyJS = require("uglify-js");
+const UglifyJS = require('uglify-js');
 
 module.exports.handler = (data, serverless, options) => {
     // CloudFront distribution name can be found under 'data.CloudFrontDistributionDomainName'
@@ -153,6 +153,7 @@ module.exports.handler = (data, serverless, options) => {
             serverless.cli.log(`Written hello.js template: ${scriptPath}`);
             serverless.cli.log(`Tracking pixel URL: ${pixelUrl}`);
             serverless.cli.log(`Tracking script URL: ${scriptUrl}`);
+            serverless.cli.log(`You can now add '<script src="${scriptUrl}"></script>' to your website's sources to enable the gathering of statistics`);
         }
     });
 
