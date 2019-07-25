@@ -18,9 +18,7 @@ Host your own privacy-effective website statistics on AWS via CloudFront, S3, Gl
   * `edge_locations`: A list of CloudFront edge location, which can be used to get approximate location info for the `page_views` table (as IP information is dropped). See below for some usage information.
 
 ## Preconditions
-This guide assumes that you have a pre-existing domain which you want to use for hosting your static website. Furthermore, you need to have access to the domain's DNS configuration.
-
-Also, you need to have an install of [Serverless](https://www.serverless.com) on your machine.
+This guide assumes that you have an install of [Serverless](https://www.serverless.com) on your machine. Furthermore, you'll need an AWS account enable to run/deploy the above mentioned services.
 
 ## How-to 
 To use `ownstats` on your websites, you can follow the steps below to get started.
@@ -68,9 +66,85 @@ $ sls deploy --domain yourdomain.yourtld --stage dev
 
 where `yourdomain.yourtld` needs to be replaced with your actual domain name. You can also specify a AWS region via the `--region` flag, otherwise `us-east-1` will be used. Furthermore, you can enable a debug mode for `hello.js` by specifying `--debug-mode true`.
 
+**Example output**
+```bash
+Serverless: Packaging service...
+Serverless: Excluding development dependencies...
+Serverless: Uploading CloudFormation file to S3...
+Serverless: Uploading artifacts...
+Serverless: Uploading service ownstats-yourdomain-yourtld.zip file to S3 (1.79 MB)...
+Serverless: Validating template...
+Serverless: Updating Stack...
+Serverless: Checking Stack update progress...
+.....................
+Serverless: Stack update finished...
+Service Information
+service: ownstats-yourdomain-yourtld
+stage: dev
+region: us-east-1
+stack: ownstats-yourdomain-yourtld-dev
+resources: 24
+api keys:
+  None
+endpoints:
+  None
+functions:
+  transformPartition: ownstats-yourdomain-yourtld-dev-transformPartition
+  createPartition: ownstats-yourdomain-yourtld-dev-createPartition
+  moveAccessLogs: ownstats-yourdomain-yourtld-dev-moveAccessLogs
+layers:
+  None
+S3 Sync: Syncing directories and S3 prefixes...
+S3 Sync: Synced.
+Serverless: Stack Output processed with handler: modules/renderScript.handler
+Serverless: Minified hello.js
+Serverless: Compressed hello.js
+Serverless: Written hello.js template: /Users/username/development/ownstats-yourdomain-yourtld/src/hello.js
+Serverless: Tracking pixel URL: https://d1h3biw9kbtest.cloudfront.net/hello.gif
+Serverless: Tracking script URL: https://d1h3biw9kbtest.cloudfront.net/hello.js
+Serverless: You can now add '<script src="https://d1h3biw9kbtest.cloudfront.net/hello.js"></script>' to your website's sources to enable the gathering of statistics
+DistributionIdKey: CloudFrontDistributionId
+CloudfrontInvalidate: Invalidation started
+Serverless: Removing old service artifacts from S3...
+```
+
 ## Usage
 
-### Glue tables
+### Using the hello.js script on your website(s)
+The deployment (see above) will generate the `<script>` tag you can use to enable the generation of page view statistics, for example
+
+```html
+<script src="https://d1h3biw9kbtest.cloudfront.net/hello.js"></script>
+```
+
+You need to add that `<script>` tag to each of your website`s pages. That's all.
+
+**Hint**  
+You can also use **one deployment** of `ownstats` to gather statistics for **multiple websites**. If you're planning to do that, you can use the `page_views.host_name` column to distinguish between the different websites.
+
+### How does it work internally?
+The `hello.js` script  will gather some information about the viewing device (not: fingerprinting) and other data:
+
+* Display width / height
+* Display inner width / height
+* Display color depth
+* Device memory (if available)
+* Device cores (if available)
+* Device platform (if available)
+* Timezone (if available)
+* Browser language
+* Referrer
+* User Agent
+* Source of request (derived from querstring if present)
+* UTM tags
+* Hostname (of the website)
+* URL
+
+Other querystring entries etc. are dismissed, and cookies for recurrent visitor detection etc. are not used.
+
+The data is then "sent" to `ownstats` by requesting the `hello.gif` from the CloudFront CDN file and adding the above collected data to the querystring of the request. The querystring then gets split etc. by the Lambda function which generates the `page_views` table, so that the collected information can be used for analytical queries.
+
+### Glue tables (to be used with Athena)
 You can use Athena to run queries on the automatically populating Glue tables
 
 #### access_logs_raw
@@ -107,6 +181,13 @@ The `access_logs_raw` table consists of the following columns:
 * httpversion (string)
 * filestatus (string)
 * encryptedfields (string)
+
+The table is partitioned by
+
+* year (string)
+* month (string)
+* day (string)
+* hour (sting)
 
 #### page_views
 The `page_views` table consists of the following columns:
@@ -146,6 +227,13 @@ The `page_views` table consists of the following columns:
 * utm_content (string)
 * utm_term (string)
 
+The table is partitioned by
+
+* year (string)
+* month (string)
+* day (string)
+* hour (sting)
+
 #### edge_locations
 The `edge_locations` table consists of the following columns:
 
@@ -159,7 +247,47 @@ The `edge_locations` table consists of the following columns:
 
 It can be joined to the `page_views` table via the respective `edge_location_prefix` columns to add location information to the page view data.
 
-### Querying via Athena
+### Querying the data
+The `ownstats` project doesn't come with a pre-packaged analytical frontend. Rather than being prejudiced on what analysts want to use, it builds the foundation for analyses by setting up an automated workflow from raw access logs to usable table strucutres, which can be queried with any tool which has support for Athena (or can use the Athena database drivers).
+
+There are some excellent resources on how to get started and use AWS Athena:
+
+* [Getting started with Athena](https://docs.aws.amazon.com/athena/latest/ug/getting-started.html)
+* [Using Athena with the JDBC driver](https://docs.aws.amazon.com/athena/latest/ug/connect-with-jdbc.html)
+* [Connecting with ODBC](https://docs.aws.amazon.com/athena/latest/ug/connect-with-odbc.html)
+
+#### Get page view count by day
+```sql
+select
+  count(*) as page_view_count
+from
+  page_views
+where
+  year = '2019'
+and
+  month = '07'
+and
+  day = '15'
+```
+
+#### Get page views by day and add edge location data
+```sql
+select 
+  pv.*,
+  el.*
+from 
+  page_views pv
+inner join
+  edge_locations el
+on
+  el.edge_location_prefix = pv.edge_location_prefix
+where
+  year = '2019'
+and
+  month = '07'
+and
+  day = '15'
+```
 
 ## Removal
 You can remove the stack by running
