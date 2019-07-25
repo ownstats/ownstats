@@ -18,7 +18,7 @@ Host your own privacy-effective website statistics on AWS via CloudFront, S3, Gl
   * `edge_locations`: A list of CloudFront edge location, which can be used to get approximate location info for the `page_views` table (as IP information is dropped). See below for some usage information.
 
 ## Preconditions
-This guide assumes that you have an install of [Serverless](https://www.serverless.com) on your machine. Furthermore, you'll need an AWS account enable to run/deploy the above mentioned services.
+This guide assumes that you have an install of [Serverless](https://www.serverless.com) on your machine. Furthermore, you'll need an AWS account enabled to run/deploy the above mentioned services, as well as already set up [AWS credentials](https://serverless.com/framework/docs/providers/aws/guide/credentials/) on your local machine.
 
 ## How-to 
 To use `ownstats` on your websites, you can follow the steps below to get started.
