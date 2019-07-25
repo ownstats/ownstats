@@ -94,8 +94,6 @@ functions:
   moveAccessLogs: ownstats-yourdomain-yourtld-dev-moveAccessLogs
 layers:
   None
-S3 Sync: Syncing directories and S3 prefixes...
-S3 Sync: Synced.
 Serverless: Stack Output processed with handler: modules/renderScript.handler
 Serverless: Minified hello.js
 Serverless: Compressed hello.js
@@ -103,6 +101,8 @@ Serverless: Written hello.js template: /Users/username/development/ownstats-your
 Serverless: Tracking pixel URL: https://d1h3biw9kbtest.cloudfront.net/hello.gif
 Serverless: Tracking script URL: https://d1h3biw9kbtest.cloudfront.net/hello.js
 Serverless: You can now add '<script src="https://d1h3biw9kbtest.cloudfront.net/hello.js"></script>' to your website's sources to enable the gathering of statistics
+S3 Sync: Syncing directories and S3 prefixes...
+S3 Sync: Synced.
 DistributionIdKey: CloudFrontDistributionId
 CloudfrontInvalidate: Invalidation started
 Serverless: Removing old service artifacts from S3...
@@ -248,7 +248,7 @@ The `edge_locations` table consists of the following columns:
 It can be joined to the `page_views` table via the respective `edge_location_prefix` columns to add location information to the page view data.
 
 ### Querying the data
-The `ownstats` project doesn't come with a pre-packaged analytical frontend. Rather than being prejudiced on what analysts want to use, it builds the foundation for analyses by setting up an automated workflow from raw access logs to usable table strucutres, which can be queried with any tool which has support for Athena (or can use the Athena database drivers).
+The `ownstats` project doesn't come with a pre-packaged analytical frontend. Rather than being prejudiced on what analysts want to use, it builds the foundation for analyses by setting up an automated workflow from raw access logs to usable table structures, which can be queried with any tool which has support for Athena (or can use the Athena database drivers).
 
 There are some excellent resources on how to get started and use AWS Athena:
 
