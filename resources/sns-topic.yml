@@ -1,0 +1,26 @@
+Resources:
+  BucketNotifications:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: '${self:custom.sns.topicName}'
+
+  BucketNotificationPolicy:
+    Type: AWS::SNS::TopicPolicy
+    DependsOn:
+      - BucketNotifications
+    Properties:
+      Topics: 
+        - Ref: BucketNotifications
+      PolicyDocument:
+        Id: 'BucketNotificationPolicyPublish'
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: "*"
+            Action: sns:Publish
+            Resource: 
+              Ref: BucketNotifications
+            Condition:
+              ArnLike:
+                aws:SourceArn: arn:aws:s3:::${self:custom.s3.buckets.logs}

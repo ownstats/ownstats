@@ -14,10 +14,18 @@ Resources:
           Id: 'compressed-js-rule'
   LogBucket:
     Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - BucketNotifications
+      - BucketNotificationPolicy
     Properties:
       BucketName: ${self:custom.s3.buckets.logs}
-      #PublicAccessBlockConfiguration:
-        #BlockPublicAcls: 'true'
-        #BlockPublicPolicy: 'true'
-        #IgnorePublicAcls: 'true'
-        #RestrictPublicBuckets: 'true'
+      NotificationConfiguration:
+        TopicConfigurations: 
+          - Event: s3:ObjectCreated:*
+            Topic: 
+              Ref: BucketNotifications
+            Filter: 
+              S3Key: 
+                Rules: 
+                  - Name: prefix
+                    Value: '${self:custom.prefixes.incoming}'
