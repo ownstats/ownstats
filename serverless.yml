@@ -56,6 +56,11 @@ custom:
         - hello.js:
             ContentType: 'application/javascript'
             ContentEncoding: 'gzip'
+        - hello.gif:
+            ContentType: 'image/gif'
+            ContentEncoding: 'gzip'
+            CacheControl: 'no-cache, no-store, must-revalidate'
+            Expires: '1990-01-01T00:00:00.000Z'
     - bucketName: ${self:custom.s3.buckets.logs}
       localDir: data
       bucketPrefix: ${self:custom.prefixes.edgeLocations}
