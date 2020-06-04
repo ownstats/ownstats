@@ -20,12 +20,12 @@
   },
   "homepage": "https://github.com/ownstats/ownstats#readme",
   "devDependencies": {
-    "aws-sdk": "^2.673.0",
+    "aws-sdk": "^2.689.0",
     "serverless-cloudfront-invalidate": "^1.4.0",
-    "serverless-pseudo-parameters": "^2.4.0",
-    "serverless-s3-sync": "^1.14.1",
+    "serverless-pseudo-parameters": "^2.5.0",
+    "serverless-s3-sync": "^1.14.3",
     "serverless-stack-output": "^0.2.3",
-    "uglify-js": "^3.9.2"
+    "uglify-js": "^3.9.4"
   },
   "dependencies": {
     "bunyan": "^1.8.12"
