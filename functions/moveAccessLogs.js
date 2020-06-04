@@ -21,10 +21,14 @@ const filenamePattern = '[^/]+$';
 exports.handler = async (event, context, callback) => {
   const requestLogger = logger.child({ requestId: context.awsRequestId });
 
+  // Log event
+  requestLogger.debug({ event });
+
   const moves = event.Records.map(record => {
 
-    const bucket = record.s3.bucket.name;
-    const sourceKey = record.s3.object.key;
+    const s3Records = JSON.parse(record.Sns.Message).Records;
+    const bucket = s3Records[0].s3.bucket.name;
+    const sourceKey = s3Records[0].s3.object.key;
     const sourceRegex = new RegExp(datePattern, 'g');
     const match = sourceRegex.exec(sourceKey);
     

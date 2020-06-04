@@ -1,22 +1,17 @@
 service:
-  name: ownstats-${self:custom.sanitizedDomainName}
+  name: ownstats
 
 plugins:
   - serverless-pseudo-parameters
-  - serverless-plugin-existing-s3
   - serverless-stack-output
   - serverless-s3-sync
   - serverless-cloudfront-invalidate
 
 custom:
 
-  # Store the domain name, otherwise use default
-  domainName: ${opt:domain}
-  sanitizedDomainName: ${file(./modules/sanitize.js):sanitizeDomainName}
-
   # Output plugin configuration
   output:
-    handler: modules/renderScript.handler
+    handler: modules/finalize.handler
 
   # S3 buckets
   s3:
@@ -26,17 +21,21 @@ custom:
 
   # Glue database name
   glue:
-    database: ${file(./modules/sanitize.js):sanitizeDatabaseName}
+    database: ownstats
     tables:
-      raw: access_logs_raw
-      optimized: page_views
+      accessLogs: access_logs
+      pageViews: page_views
       edgeLocations: edge_locations
+
+  # SNS
+  sns:
+    topicName: '${self:custom.s3.buckets.logs}-notifications'
 
   # Prefixes
   prefixes:
     incoming: incoming/
-    partitionedGz: partitioned-gz/
-    partitionedParquet: partitioned-parquet/
+    accessLogs: access-logs/
+    pageViews: page-views/
     athenaQueryResults: athena-query-results/
     edgeLocations: edge-locations/
 
@@ -57,14 +56,18 @@ custom:
         - hello.js:
             ContentType: 'application/javascript'
             ContentEncoding: 'gzip'
+        # See: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html#ExpirationDownloadDist
+        - hello.gif:
+            ContentType: 'image/gif'
     - bucketName: ${self:custom.s3.buckets.logs}
       localDir: data
       bucketPrefix: ${self:custom.prefixes.edgeLocations}
 
 provider:
   name: aws
-  runtime: nodejs8.10
+  runtime: nodejs12.x
   region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -98,49 +101,51 @@ provider:
       Resource: '*'
 
 functions:
-  transformPartition:
-    handler: functions/transformPartition.handler
-    description: 'Transform Athena partitions'
-    memorySize: 256
+
+  transformPageViews:
+    handler: functions/transformPageViews.handler
+    description: 'Derive page views from raw access logs'
+    memorySize: 128
     timeout: 900
     environment:
-      SOURCE_TABLE: '#{PartitionedGzTable}'
-      TARGET_TABLE: '#{PartitionedParquetTable}'
-      DATABASE: '#{AccessLogsDatabase}'
+      AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+      SOURCE_TABLE: '#{AccessLogsTable}'
+      TARGET_TABLE: '#{PageViewsTable}'
+      DATABASE: '#{OwnstatsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
-      ATHENA_CTAS_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.partitionedParquet}'
       S3_BUCKET: '#{LogBucket}'
-      S3_PREFIX: '${self:custom.prefixes.partitionedGz}'
+      S3_PREFIX: '${self:custom.prefixes.accessLogs}'
       LOG_LEVEL: debug
     events:
-      - schedule: cron(1 * * * ? *)
+      - schedule: cron(1 * * * ? *) # Every 1st minute of an hour
+
   createPartition:
     handler: functions/createPartition.handler
-    description: 'Create Athena partitions'
-    memorySize: 256
-    timeout: 10
+    description: 'Create Athena partitions for the access logs table'
+    memorySize: 128
+    timeout: 120
     environment:
-      TABLE: '#{PartitionedGzTable}'
-      DATABASE: '#{AccessLogsDatabase}'
+      AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+      TABLE: '#{AccessLogsTable}'
+      DATABASE: '#{OwnstatsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
       LOG_LEVEL: debug
     events:
       - schedule: cron(55 * * * ? *)
+  
   moveAccessLogs:
     handler: functions/moveAccessLogs.handler
     description: 'Move incoming files to partitioned prefix structure'
-    memorySize: 256
-    timeout: 30
+    memorySize: 128
+    timeout: 300
     environment:
-      TARGET_KEY_PREFIX: '${self:custom.prefixes.partitionedGz}'
+      AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+      TARGET_KEY_PREFIX: '${self:custom.prefixes.accessLogs}'
       LOG_LEVEL: debug
     events:
-      - existingS3:
-          bucket: ${self:custom.s3.buckets.logs}
-          events: 
-            - s3:ObjectCreated:*
-          rules:
-            - prefix: '${self:custom.prefixes.incoming}'
+      - sns: 
+          arn: !Ref BucketNotifications
+          topicName: ${self:custom.sns.topicName}
 
 package:
   include:
@@ -159,11 +164,12 @@ package:
 resources:
 
   - ${file(resources/cloudfront-origin-access-identity.yml)}
+  - ${file(resources/sns-topic.yml)}
   - ${file(resources/s3-buckets.yml)}
   - ${file(resources/s3-policies.yml)}
   - ${file(resources/cf-distribution.yml)}
   - ${file(resources/glue-db.yml)}
-  - ${file(resources/glue-table-partitioned-gz.yml)}
-  - ${file(resources/glue-table-partitioned-parquet.yml)}
+  - ${file(resources/glue-table-access-logs.yml)}
+  - ${file(resources/glue-table-page-views.yml)}
   - ${file(resources/glue-table-edge-locations.yml)}
   - ${file(resources/outputs.yml)}

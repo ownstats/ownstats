@@ -1,13 +1,13 @@
 {
   "name": "ownstats",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Host your own website statistics analytics on AWS",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git@github.com:tobilg/ownstats.git"
+    "url": "git@github.com:ownstats/ownstats.git"
   },
   "author": {
     "name": "TobiLG",
@@ -16,17 +16,16 @@
   },
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/tobilg/ownstats/issues"
+    "url": "https://github.com/ownstats/ownstats/issues"
   },
-  "homepage": "https://github.com/tobilg/ownstats#readme",
+  "homepage": "https://github.com/ownstats/ownstats#readme",
   "devDependencies": {
-    "aws-sdk": "^2.494.0",
-    "serverless-cloudfront-invalidate": "^1.3.0",
-    "serverless-plugin-existing-s3": "^2.4.0",
-    "serverless-pseudo-parameters": "^2.4.0",
-    "serverless-s3-sync": "^1.8.0",
+    "aws-sdk": "^2.689.0",
+    "serverless-cloudfront-invalidate": "^1.4.0",
+    "serverless-pseudo-parameters": "^2.5.0",
+    "serverless-s3-sync": "^1.14.3",
     "serverless-stack-output": "^0.2.3",
-    "uglify-js": "^3.6.0"
+    "uglify-js": "^3.9.4"
   },
   "dependencies": {
     "bunyan": "^1.8.12"

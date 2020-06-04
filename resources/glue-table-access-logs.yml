@@ -1,0 +1,97 @@
+# See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/AccessLogs.html#BasicDistributionFileFormat
+Resources:
+  AccessLogsTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: '#{AWS::AccountId}'
+      DatabaseName: '#{OwnstatsDatabase}'
+      TableInput:
+        Name: '${self:custom.glue.tables.accessLogs}'
+        Description: 'Gzip logs delivered by Amazon CloudFront partitioned by year, month, day, hour'
+        TableType: EXTERNAL_TABLE
+        Parameters: { "skip.header.line.count": "2" }
+        PartitionKeys:
+          - Name: year
+            Type: string
+          - Name: month
+            Type: string
+          - Name: day
+            Type: string
+          - Name: hour
+            Type: string
+        StorageDescriptor:
+          OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
+          Columns:
+            - Name: date
+              Type: date
+            - Name: time
+              Type: string
+            - Name: location
+              Type: string
+            - Name: bytes
+              Type: bigint
+            - Name: request_ip
+              Type: string
+            - Name: method
+              Type: string
+            - Name: host
+              Type: string
+            - Name: uri
+              Type: string
+            - Name: status
+              Type: int
+            - Name: referrer
+              Type: string
+            - Name: useragent
+              Type: string
+            - Name: querystring
+              Type: string
+            - Name: cookie
+              Type: string
+            - Name: result_type
+              Type: string
+            - Name: request_id
+              Type: string
+            - Name: host_header
+              Type: string
+            - Name: request_protocol
+              Type: string
+            - Name: request_bytes
+              Type: bigint
+            - Name: time_taken
+              Type: float
+            - Name: forwarded_for
+              Type: string
+            - Name: ssl_protocol
+              Type: string
+            - Name: ssl_cipher
+              Type: string
+            - Name: response_result_type
+              Type: string
+            - Name: http_version
+              Type: string
+            - Name: file_status
+              Type: string
+            - Name: encrypted_fields
+              Type: string
+            - Name: port
+              Type: bigint
+            - Name: time_to_first_byte
+              Type: string
+            - Name: detailed_result_type
+              Type: string
+            - Name: content_type
+              Type: string
+            - Name: content_length
+              Type: bigint
+            - Name: range_start
+              Type: string
+            - Name: range_end
+              Type: string
+          InputFormat: org.apache.hadoop.mapred.TextInputFormat
+          Location: 's3://#{LogBucket}/${self:custom.prefixes.accessLogs}'
+          SerdeInfo:
+            Parameters:
+              field.delim: "\t"
+              serialization.format: "\t"
+            SerializationLibrary: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
