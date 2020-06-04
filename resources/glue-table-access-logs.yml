@@ -1,13 +1,13 @@
 # See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/AccessLogs.html#BasicDistributionFileFormat
 Resources:
-  PartitionedGzTable:
+  AccessLogsTable:
     Type: AWS::Glue::Table
     Properties:
       CatalogId: '#{AWS::AccountId}'
-      DatabaseName: '#{AccessLogsDatabase}'
+      DatabaseName: '#{OwnstatsDatabase}'
       TableInput:
-        Name: '${self:custom.glue.tables.raw}'
-        Description: 'Gzip logs delivered by Amazon CloudFront partitioned'
+        Name: '${self:custom.glue.tables.accessLogs}'
+        Description: 'Gzip logs delivered by Amazon CloudFront partitioned by year, month, day, hour'
         TableType: EXTERNAL_TABLE
         Parameters: { "skip.header.line.count": "2" }
         PartitionKeys:
@@ -89,7 +89,7 @@ Resources:
             - Name: range_end
               Type: string
           InputFormat: org.apache.hadoop.mapred.TextInputFormat
-          Location: 's3://#{LogBucket}/${self:custom.prefixes.partitionedGz}'
+          Location: 's3://#{LogBucket}/${self:custom.prefixes.accessLogs}'
           SerdeInfo:
             Parameters:
               field.delim: "\t"

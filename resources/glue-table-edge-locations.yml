@@ -3,12 +3,12 @@ Resources:
     Type: AWS::Glue::Table
     Properties:
       CatalogId: '#{AWS::AccountId}'
-      DatabaseName: '#{AccessLogsDatabase}'
+      DatabaseName: '#{OwnstatsDatabase}'
       TableInput:
         Name: '${self:custom.glue.tables.edgeLocations}'
         Description: 'Predefined edge location table'
         TableType: EXTERNAL_TABLE
-        Parameters: { "classification": "csv" }
+        Parameters: { "classification": "csv", "skip.header.line.count": "1" }
         StorageDescriptor:
           OutputFormat: org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat
           Columns:

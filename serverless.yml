@@ -11,7 +11,7 @@ custom:
 
   # Output plugin configuration
   output:
-    handler: modules/renderScript.handler
+    handler: modules/finalize.handler
 
   # S3 buckets
   s3:
@@ -23,8 +23,8 @@ custom:
   glue:
     database: ownstats
     tables:
-      raw: access_logs_raw
-      optimized: page_views
+      accessLogs: access_logs
+      pageViews: page_views
       edgeLocations: edge_locations
 
   # SNS
@@ -34,8 +34,8 @@ custom:
   # Prefixes
   prefixes:
     incoming: incoming/
-    partitionedGz: partitioned-gz/
-    partitionedParquet: partitioned-parquet/
+    accessLogs: access-logs/
+    pageViews: page-views/
     athenaQueryResults: athena-query-results/
     edgeLocations: edge-locations/
 
@@ -56,11 +56,9 @@ custom:
         - hello.js:
             ContentType: 'application/javascript'
             ContentEncoding: 'gzip'
+        # See: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/Expiration.html#ExpirationDownloadDist
         - hello.gif:
             ContentType: 'image/gif'
-            ContentEncoding: 'gzip'
-            CacheControl: 'no-cache, no-store, must-revalidate'
-            Expires: '1990-01-01T00:00:00.000Z'
     - bucketName: ${self:custom.s3.buckets.logs}
       localDir: data
       bucketPrefix: ${self:custom.prefixes.edgeLocations}
@@ -103,44 +101,46 @@ provider:
       Resource: '*'
 
 functions:
-  transformPartition:
-    handler: functions/transformPartition.handler
-    description: 'Transform Athena partitions'
-    memorySize: 256
+
+  transformPageViews:
+    handler: functions/transformPageViews.handler
+    description: 'Derive page views from raw access logs'
+    memorySize: 128
     timeout: 900
     environment:
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
-      SOURCE_TABLE: '#{PartitionedGzTable}'
-      TARGET_TABLE: '#{PartitionedParquetTable}'
-      DATABASE: '#{AccessLogsDatabase}'
+      SOURCE_TABLE: '#{AccessLogsTable}'
+      TARGET_TABLE: '#{PageViewsTable}'
+      DATABASE: '#{OwnstatsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
-      ATHENA_CTAS_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.partitionedParquet}'
       S3_BUCKET: '#{LogBucket}'
-      S3_PREFIX: '${self:custom.prefixes.partitionedGz}'
+      S3_PREFIX: '${self:custom.prefixes.accessLogs}'
       LOG_LEVEL: debug
     events:
-      - schedule: cron(1 * * * ? *)
+      - schedule: cron(1 * * * ? *) # Every 1st minute of an hour
+
   createPartition:
     handler: functions/createPartition.handler
-    description: 'Create Athena partitions'
-    memorySize: 256
+    description: 'Create Athena partitions for the access logs table'
+    memorySize: 128
     timeout: 120
     environment:
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
-      TABLE: '#{PartitionedGzTable}'
-      DATABASE: '#{AccessLogsDatabase}'
+      TABLE: '#{AccessLogsTable}'
+      DATABASE: '#{OwnstatsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
       LOG_LEVEL: debug
     events:
       - schedule: cron(55 * * * ? *)
+  
   moveAccessLogs:
     handler: functions/moveAccessLogs.handler
     description: 'Move incoming files to partitioned prefix structure'
-    memorySize: 256
+    memorySize: 128
     timeout: 300
     environment:
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
-      TARGET_KEY_PREFIX: '${self:custom.prefixes.partitionedGz}'
+      TARGET_KEY_PREFIX: '${self:custom.prefixes.accessLogs}'
       LOG_LEVEL: debug
     events:
       - sns: 
@@ -169,7 +169,7 @@ resources:
   - ${file(resources/s3-policies.yml)}
   - ${file(resources/cf-distribution.yml)}
   - ${file(resources/glue-db.yml)}
-  - ${file(resources/glue-table-partitioned-gz.yml)}
-  - ${file(resources/glue-table-partitioned-parquet.yml)}
+  - ${file(resources/glue-table-access-logs.yml)}
+  - ${file(resources/glue-table-page-views.yml)}
   - ${file(resources/glue-table-edge-locations.yml)}
   - ${file(resources/outputs.yml)}

@@ -1,57 +1,51 @@
 Resources:
-  PartitionedParquetTable:
+  PageViewsTable:
     Type: AWS::Glue::Table
     Properties:
       CatalogId: '#{AWS::AccountId}'
-      DatabaseName: '#{AccessLogsDatabase}'
+      DatabaseName: '#{OwnstatsDatabase}'
       TableInput:
-        Name: '${self:custom.glue.tables.optimized}'
-        Description: 'Parquet format access logs as transformed from gzip version'
+        Name: '${self:custom.glue.tables.pageViews}'
+        Description: 'Page views table'
         TableType: EXTERNAL_TABLE
         Parameters: { 'has_encrypted_data': 'false', 'parquet.compression': 'SNAPPY' }
         PartitionKeys:
-          - Name: year
+          - Name: event_date
             Type: string
-          - Name: month
+          - Name: event_hour
             Type: string
-          - Name: day
-            Type: string
-          - Name: hour
+          - Name: domain_name
             Type: string
         StorageDescriptor:
           OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
           Columns:
-            - Name: date
-              Type: date
-            - Name: time
+            - Name: event_year
               Type: string
+            - Name: event_month
+              Type: string
+            - Name: event_day
+              Type: string
+            - Name: event_timestamp
+              Type: timestamp
             - Name: edge_location
               Type: string
-            - Name: edge_location_prefix
+            - Name: edge_city
               Type: string
-            - Name: bytes
-              Type: bigint
-            - Name: host_name
+            - Name: edge_state
               Type: string
+            - Name: edge_country
+              Type: string
+            - Name: edge_latitude
+              Type: float
+            - Name: edge_longitude
+              Type: float
             - Name: url
               Type: string
-            - Name: status
-              Type: int
+            - Name: path
+              Type: string
             - Name: referrer
               Type: string
             - Name: user_agent
-              Type: string
-            - Name: result_type
-              Type: string
-            - Name: response_result_type
-              Type: string
-            - Name: request_bytes
-              Type: bigint
-            - Name: time_taken
-              Type: float
-            - Name: forwarded_for
-              Type: string
-            - Name: http_version
               Type: string
             - Name: timezone
               Type: string
@@ -81,7 +75,13 @@ Resources:
               Type: string
             - Name: utm_term
               Type: string
+            - Name: cloudfront_cache_type
+              Type: string
+            - Name: cloudfront_time_taken_ms
+              Type: int
+            - Name: cloudfront_http_version
+              Type: string
           InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
-          Location: 's3://#{LogBucket}/${self:custom.prefixes.partitionedParquet}'
+          Location: 's3://#{LogBucket}/${self:custom.prefixes.pageViews}'
           SerdeInfo:
             SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe

@@ -11,10 +11,10 @@ Host your own privacy-effective website statistics on AWS via CloudFront, S3, Gl
 * A CloudFront distribution for global hosting of the assets via CDN
 * A Lambda function for automatic movement of the raw CloudFront logs into a folder structure which benefits Athena partitioning (see [functions/moveAccessLogs.js](https://github.com/ownstats/ownstats/blob/master/functions/moveAccessLogs.js))
 * A Lambda function which creates Athena partitions for the raw CloudFront logs (see [functions/createPartition.js](https://github.com/ownstats/ownstats/blob/master/functions/createPartition.js))
-* A Lambda function which transforms the raw CloudFront logs into a page view table, and also creates the relevant Athena partitions (see [functions/transformPartition.js](https://github.com/ownstats/ownstats/blob/master/functions/transformPartition.js))
+* A Lambda function which transforms the raw CloudFront logs into a page view table, and also creates the relevant Athena partitions (see [functions/transformPageViews.js](https://github.com/ownstats/ownstats/blob/master/functions/transformPageViews.js))
 * A set of Glue tables  
-  * `access_logs_raw`: Holds the raw CloudFront logs
-  * `page_views`: Contains the page views derived from `access_logs_raw`
+  * `access_logs`: Holds the raw CloudFront logs
+  * `page_views`: Contains the page views derived from `access_logs`
   * `edge_locations`: A list of CloudFront edge location, which can be used to get approximate location info for the `page_views` table (as IP information is dropped). See below for some usage information.
 
 ## Preconditions
@@ -89,7 +89,7 @@ api keys:
 endpoints:
   None
 functions:
-  transformPartition: ownstats-yourdomain-yourtld-dev-transformPartition
+  transformPageViews: ownstats-yourdomain-yourtld-dev-transformPageViews
   createPartition: ownstats-yourdomain-yourtld-dev-createPartition
   moveAccessLogs: ownstats-yourdomain-yourtld-dev-moveAccessLogs
 layers:
@@ -120,7 +120,7 @@ The deployment (see above) will generate the `<script>` tag you can use to enabl
 You need to add that `<script>` tag to each of your website`s pages. That's all.
 
 **Hint**  
-You can also use **one deployment** of `ownstats` to gather statistics for **multiple websites**. If you're planning to do that, you can use the `page_views.host_name` column to distinguish between the different websites.
+You can also use **one deployment** of `ownstats` to gather statistics for **multiple websites**. If you're planning to do that, you can use the `page_views.domain_name` column to distinguish between the different websites.
 
 ### How does it work internally?
 The `hello.js` script  will gather some information about the viewing device (not: fingerprinting) and other data:
@@ -147,19 +147,18 @@ The data is then "sent" to `ownstats` by requesting the `hello.gif` from the Clo
 ### Glue tables (to be used with Athena)
 You can use Athena to run queries on the automatically populating Glue tables
 
-#### access_logs_raw
-The `access_logs_raw` table consists of the following columns:
+#### access_logs
+The `access_logs` table consists of the following columns:
 
 * year (string)
 * month (string)
 * day (string)
 * hour (sting)
 * date (date)
-* date (date)
 * time (string)
 * location (string)
 * bytes (bigint)
-* requestip (string)
+* request_ip (string)
 * method (string)
 * host (string)
 * uri (string)
@@ -168,19 +167,19 @@ The `access_logs_raw` table consists of the following columns:
 * useragent (string)
 * querystring (string)
 * cookie (string)
-* resulttype (string)
-* requestid (string)
-* hostheader (string)
-* requestprotocol (string)
-* requestbytes (bigint)
-* timetaken (float)
-* xforwardedfor (string)
-* sslprotocol (string)
-* sslcipher (string)
-* responseresulttype (string)
-* httpversion (string)
-* filestatus (string)
-* encryptedfields (string)
+* result_type (string)
+* request_id (string)
+* host_header (string)
+* request_protocol (string)
+* request_bytes (bigint)
+* time_taken (float)
+* forwarded_for (string)
+* ssl_protocol (string)
+* ssl_cipher (string)
+* response_result_type (string)
+* http_version (string)
+* file_status (string)
+* encrypted_fields (string)
 
 The table is partitioned by
 
@@ -192,26 +191,20 @@ The table is partitioned by
 #### page_views
 The `page_views` table consists of the following columns:
 
-* year (string)
-* month (string)
-* day (string)
-* hour (sting)
-* date (date)
-* time (string)
+* event_year (string)
+* event_month (string)
+* event_day (string)
+* event_timestamp (timestamp)
 * edge_location (string)
-* edge_location_prefix (string)
-* bytes (bigint)
-* host_name (string)
+* edge_city (string)
+* edge_state (string)
+* edge_country (string)
+* edge_latitude (float)
+* edge_longitude (float)
 * url (string)
-* status (int)
+* path (string)
 * referrer (string)
 * user_agent (string)
-* result_type (string)
-* response_result_type (string)
-* request_bytes (bigint)
-* time_taken (float)
-* x_forwarded_for (string)
-* http_version (string)
 * timezone (string)
 * device_outer_resolution (string)
 * device_inner_resolution (string)
@@ -226,13 +219,15 @@ The `page_views` table consists of the following columns:
 * utm_medium (string)
 * utm_content (string)
 * utm_term (string)
+* cloudfront_cache_type (string)
+* cloudfront_time_taken_ms (int)
+* cloudfront_http_version (string)
 
 The table is partitioned by
 
-* year (string)
-* month (string)
-* day (string)
-* hour (sting)
+* event_date (string)
+* event_hour (sting)
+* domain_name (sting)
 
 #### edge_locations
 The `edge_locations` table consists of the following columns:
@@ -245,7 +240,7 @@ The `edge_locations` table consists of the following columns:
 * latitude (float)
 * longitude (float)
 
-It can be joined to the `page_views` table via the respective `edge_location_prefix` columns to add location information to the page view data.
+The `edge_locations` table is automatically joined with the `access_logs` table during the generation of `page_views` table via the respective `edge_location_prefix` columns to add location information to the page view data.
 
 ### Querying the data
 The `ownstats` project doesn't come with a pre-packaged analytical frontend. Rather than being prejudiced on what analysts want to use, it builds the foundation for analyses by setting up an automated workflow from raw access logs to usable table structures, which can be queried with any tool which has support for Athena (or can use the Athena database drivers).
@@ -263,30 +258,7 @@ select
 from
   page_views
 where
-  year = '2019'
-and
-  month = '07'
-and
-  day = '15'
-```
-
-#### Get page views by day and add edge location data
-```sql
-select 
-  pv.*,
-  el.*
-from 
-  page_views pv
-inner join
-  edge_locations el
-on
-  el.edge_location_prefix = pv.edge_location_prefix
-where
-  year = '2019'
-and
-  month = '07'
-and
-  day = '15'
+  event_date = '2019-07-01'
 ```
 
 ### IAM policy
