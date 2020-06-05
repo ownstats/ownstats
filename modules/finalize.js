@@ -18,6 +18,6 @@ module.exports.handler = (data, serverless, options) => {
   // 2. Generate tracking script
   trackingScriptGenerator.renderTemplate()
     .catch(err => {
-      serverless.cli.log(`Error during finalization: ${error}`);
+      serverless.cli.log(`Error during finalization: ${err}`);
     });
 };
