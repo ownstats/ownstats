@@ -4,7 +4,7 @@ Resources:
     Type: AWS::Glue::Table
     Properties:
       CatalogId: '#{AWS::AccountId}'
-      DatabaseName: '#{OwnstatsDatabase}'
+      DatabaseName: '#{AccessLogsDatabase}'
       TableInput:
         Name: '${self:custom.glue.tables.accessLogs}'
         Description: 'Gzip logs delivered by Amazon CloudFront partitioned by year, month, day, hour'

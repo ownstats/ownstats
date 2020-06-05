@@ -111,7 +111,7 @@ functions:
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
       SOURCE_TABLE: '#{AccessLogsTable}'
       TARGET_TABLE: '#{PageViewsTable}'
-      DATABASE: '#{OwnstatsDatabase}'
+      DATABASE: '#{AccessLogsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
       S3_BUCKET: '#{LogBucket}'
       S3_PREFIX: '${self:custom.prefixes.accessLogs}'
@@ -127,7 +127,7 @@ functions:
     environment:
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
       TABLE: '#{AccessLogsTable}'
-      DATABASE: '#{OwnstatsDatabase}'
+      DATABASE: '#{AccessLogsDatabase}'
       ATHENA_QUERY_RESULTS_LOCATION: 's3://#{LogBucket}/${self:custom.prefixes.athenaQueryResults}'
       LOG_LEVEL: debug
     events:
