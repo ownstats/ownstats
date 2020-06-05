@@ -1,5 +1,5 @@
 Resources:
-  AccessLogsDatabase:
+  OwnstatsDatabase:
     Type: AWS::Glue::Database
     Properties:
       CatalogId: '#{AWS::AccountId}'
