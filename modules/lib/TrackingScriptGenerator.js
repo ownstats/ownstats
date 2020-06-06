@@ -62,10 +62,11 @@ class TrackingScriptGenerator {
       var utms = utmMatches ? utmMatches : [];
 
       // Populate
-      var data = { u: url, hn: loc.hostname };
+      var data = { t: 'pv', ts: new Date().getTime(), u: url, hn: loc.hostname };
       if (userAgent) data.ua = userAgent;
       if (refs && refs[0]) data.s = refs[0];
       if (doc.referrer && !isPushState) data.r = doc.referrer;
+      if (doc.title) data.ti = doc.title;
       if (window.innerWidth) data.iw = window.innerWidth;
       if (window.innerWidth) data.ih = window.innerHeight;
       if (sc.width) data.w = sc.width;
