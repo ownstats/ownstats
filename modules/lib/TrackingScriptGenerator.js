@@ -138,7 +138,7 @@ class TrackingScriptGenerator {
     if (con && con.error) con.error('ownstats: ' + e);
   }
 
-})(window, '${this.cfDistributionDomainName}', '/${this.imageName}', ${this.debugMode});
+})(window, '${this.cfDistributionDomainName}', '/${this.pixelName}', ${this.debugMode});
 `;
 
     // Minify script template
