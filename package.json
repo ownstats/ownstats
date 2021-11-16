@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/ownstats/ownstats#readme",
   "devDependencies": {
-    "aws-sdk": "^2.689.0",
+    "aws-sdk": "^2.814.0",
     "serverless-cloudfront-invalidate": "^1.4.0",
     "serverless-pseudo-parameters": "^2.5.0",
     "serverless-s3-sync": "^1.14.3",
