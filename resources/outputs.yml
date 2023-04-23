@@ -1,8 +1,0 @@
-Outputs:
-  CloudFrontDistributionId:
-    Description: CloudFront distribution id
-    Value:
-      Ref: CFDistribution
-  CloudFrontDistributionDomainName:
-    Description: CloudFront distribution id
-    Value: '#{CFDistribution.DomainName}'

@@ -1,7 +1,0 @@
-Resources:
-  OwnstatsDatabase:
-    Type: AWS::Glue::Database
-    Properties:
-      CatalogId: '#{AWS::AccountId}'
-      DatabaseInput:
-        Name: '${self:custom.glue.database}'

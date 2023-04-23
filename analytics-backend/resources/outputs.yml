@@ -1,0 +1,19 @@
+Outputs:
+  CloudFrontDistributionId:
+    Description: CloudFront distribution id
+    Value: !Ref CFDistribution
+  CloudFrontDistributionDomainName:
+    Description: CloudFront distribution domain name
+    Value: !GetAtt 'CFDistribution.DomainName'
+  DistributionBucketName:
+    Description: Distribution S3 bucket name
+    Value: !Ref DistributionBucket
+  RawBucketName:
+    Description: Raw data S3 bucket name
+    Value: !Ref RawBucket
+  CleanedBucketName:
+    Description: Cleaned data S3 bucket name
+    Value: !Ref CleanedBucket
+  CuratedBucketName:
+    Description: Curated data S3 bucket name
+    Value: !Ref CuratedBucket

@@ -1,0 +1,170 @@
+service: ownstats-analytics-backend
+
+frameworkVersion: '3'
+
+plugins:
+  - serverless-iam-roles-per-function
+  - serverless-prune-plugin
+  - serverless-s3-sync
+  - serverless-esbuild
+
+custom:
+
+  # S3 buckets
+  s3:
+    buckets:
+      raw: '${self:service}-raw-${self:provider.stage}'
+      cleaned: '${self:service}-cleaned-${self:provider.stage}'
+      curated: '${self:service}-curated-${self:provider.stage}'
+      distribution: '${self:service}-cdn-${self:provider.stage}'
+
+  # Glue database name
+  glue:
+    database: ${self:service}
+
+  # SNS
+  sns:
+    topicName: '${self:service}-bucket-notifications'
+
+  # DynamoDB
+  dynamodb:
+    name: '${self:service}-table-${self:provider.stage}'
+  
+  # Define the default Kinesis settings
+  kinesis:
+    data:
+      shards: 1
+      name: '${self:service}-data-stream-${self:provider.stage}'
+    delivery:
+      name: '${self:service}-delivery-stream-${self:provider.stage}'
+      limits:
+        intervalInSeconds: 60
+        sizeInMB: 128
+
+  # Define the default CloudWatch logs settings
+  logs:
+    retentionInDays: 7
+    groupName: 'kinesis/${self:custom.kinesis.delivery.name}'
+    streamName: 'KinesisFirehoseLogStream'
+
+  # Prefixes
+  prefixes:
+    raw: 'event_date=!{timestamp:yyyy}-!{timestamp:MM}-!{timestamp:dd}/'
+    incoming: incoming
+    aggregated: aggregated
+    error: 'error/!{timestamp:yyyy}-!{timestamp:MM}-!{timestamp:dd}/!{firehose:error-output-type}/'
+
+  # esbuild settings
+  esbuild:
+    bundle: true
+    minify: false
+    exclude:
+      - duckdb
+
+  # Prune plugin
+  prune:
+    automatic: true
+    number: 3
+
+  # S3 sync plugin configuration
+  s3Sync:
+    - bucketName: ${self:custom.s3.buckets.distribution}
+      localDir: src
+      params:
+        - hello.gif:
+            ContentType: 'image/gif'
+        - noscript.gif:
+            ContentType: 'image/gif'
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'prd'}
+  logRetentionInDays: 7
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1' # Enable HTTP keep-alive connections for the AWS SDK
+    TABLE_NAME: '${self:custom.dynamodb.name}'
+    STAGE: '${self:provider.stage}'
+    LOG_LEVEL: 'debug'
+
+functions:
+
+  processKinesisRecords:
+    handler: functions/kinesisProcessor.handler
+    description: 'Process the Kinesis Firehose records'
+    memorySize: 1024
+    timeout: 30
+    iamRoleStatementsName: '${self:service}-role-processKinesisRecords'
+
+  storeS3Objects:
+    handler: functions/storeS3Objects.handler
+    description: 'Process the S3 bucket notification events'
+    memorySize: 256
+    timeout: 3
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+          - dynamodb:DeleteItem
+        Resource: !Sub '${DataTable.Arn}'
+    events:
+      - sns:
+          arn: !Ref BucketNotifications
+          topicName: '${self:custom.sns.topicName}'
+
+  aggregateStats:
+    handler: functions/runQuery.handler
+    memorySize: 10240
+    timeout: 900
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}/${self:custom.prefixes.incoming}/*'
+      - Effect: Allow
+        Action:
+          - s3:ListBucket
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}'
+      # See https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html#mpuAndPermissions
+      - Effect: Allow
+        Action:
+          - s3:ListBucket
+          - s3:ListBucketMultipartUploads
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.curated}'
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+          - s3:PutObject
+          - s3:AbortMultipartUpload
+          - s3:ListMultipartUploadParts
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.curated}/${self:custom.prefixes.aggregated}/stats/*'
+    layers:
+      - 'arn:aws:lambda:${self:provider.region}:041475135427:layer:duckdb-nodejs-x86:1'
+    environment:
+      S3_INPUT_BUCKET_NAME: '${self:custom.s3.buckets.cleaned}'
+      S3_OUTPUT_BUCKET_NAME: '${self:custom.s3.buckets.curated}'
+      S3_INPUT_PREFIX: '${self:custom.prefixes.incoming}'
+      S3_OUTPUT_PREFIX: '${self:custom.prefixes.aggregated}'
+    events:
+      - schedule:
+          name: ${self:service}-repartition-event
+          description: Repartition parquet files from yesterday
+          # Start every day at 00:30AM
+          rate: cron(30 0 * * ? *)
+
+resources:
+
+  - ${file(resources/sns-topic.yml)}
+  - ${file(resources/s3-buckets.yml)}
+  - ${file(resources/cf-distribution.yml)}
+  - ${file(resources/dynamodb-table.yml)}
+  - ${file(resources/kinesis.yml)}
+  - ${file(resources/glue-db.yml)}
+  - ${file(resources/glue-table-incoming-events.yml)}
+  - ${file(resources/glue-table-stats.yml)}
+  - ${file(resources/glue-table-events.yml)}
+  - ${file(resources/outputs.yml)}
+
+package:
+  individually: true

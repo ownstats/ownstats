@@ -1,0 +1,37 @@
+Resources:
+  # SNS topic for handling of S3 bucket notification events
+  BucketNotifications:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: '${self:custom.sns.topicName}'
+
+  # Topic policy to enable S3 to send bucket notification events
+  BucketNotificationPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: 
+        - Ref: BucketNotifications
+      PolicyDocument:
+        Id: 'BucketNotificationPolicyPublish'
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'Allow cleaned'
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action: sns:Publish
+            Resource: 
+              Ref: BucketNotifications
+            Condition:
+              ArnLike:
+                aws:SourceArn: arn:aws:s3:::${self:custom.s3.buckets.cleaned}
+          - Sid: 'Allow curated'
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action: sns:Publish
+            Resource: 
+              Ref: BucketNotifications
+            Condition:
+              ArnLike:
+                aws:SourceArn: arn:aws:s3:::${self:custom.s3.buckets.curated}

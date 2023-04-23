@@ -1,0 +1,8 @@
+Resources:
+  # Glue database
+  Database:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref 'AWS::AccountId'
+      DatabaseInput:
+        Name: '${self:custom.glue.database}'

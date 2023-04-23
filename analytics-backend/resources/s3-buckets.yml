@@ -1,0 +1,102 @@
+Resources:
+  # S3 bucket for the assets (GIFs and JS files)
+  DistributionBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: ${self:custom.s3.buckets.distribution}
+      CorsConfiguration:
+        CorsRules: 
+          - Id: 'compressed-js-rule'
+            AllowedHeaders: 
+              - 'Content-Length'
+            AllowedMethods:
+            - GET
+            AllowedOrigins: 
+              - '*'
+
+  # S3 bucket for storing the raw data (no notifications enabled)
+  RawBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: ${self:custom.s3.buckets.raw}
+
+  # S3 bucket for storing the cleaned data
+  CleanedBucket:
+    Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - BucketNotificationPolicy
+    Properties:
+      BucketName: ${self:custom.s3.buckets.cleaned}
+      NotificationConfiguration:
+        TopicConfigurations: 
+          - Event: s3:ObjectCreated:*
+            Topic: 
+              Ref: BucketNotifications
+            Filter: 
+              S3Key: 
+                Rules: 
+                  - Name: prefix
+                    Value: '${self:custom.prefixes.incoming}/'
+          - Event: s3:ObjectRemoved:*
+            Topic: 
+              Ref: BucketNotifications
+            Filter: 
+              S3Key: 
+                Rules: 
+                  - Name: prefix
+                    Value: '${self:custom.prefixes.incoming}/'
+
+  # S3 bucket for storing the curated/aggregated data
+  CuratedBucket:
+    Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - BucketNotificationPolicy
+    Properties:
+      BucketName: ${self:custom.s3.buckets.curated}
+      NotificationConfiguration:
+        TopicConfigurations: 
+          - Event: s3:ObjectCreated:*
+            Topic: 
+              Ref: BucketNotifications
+            Filter: 
+              S3Key: 
+                Rules: 
+                  - Name: prefix
+                    Value: '${self:custom.prefixes.aggregated}/'
+          - Event: s3:ObjectRemoved:*
+            Topic: 
+              Ref: BucketNotifications
+            Filter: 
+              S3Key: 
+                Rules: 
+                  - Name: prefix
+                    Value: '${self:custom.prefixes.aggregated}/'
+
+  # S3 bucket policy for the CloudFront origin access identity
+  DistributionBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: DistributionBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ' '
+                  - - 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity'
+                    - !Ref 'CloudFrontOriginAccessIdentity'
+            Action:
+              - s3:GetObject
+            Resource:
+              - Fn::Join: [
+                  '', [
+                    'arn:aws:s3:::',
+                    {
+                      'Ref': 'DistributionBucket'
+                    },
+                    '/*'
+                  ]
+                ]
