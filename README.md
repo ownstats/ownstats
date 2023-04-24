@@ -5,6 +5,7 @@ The current version of Ownstats is described (and further developed) in a series
 
 ## Packages
 * [analytics-backend](analytics-backend/README.md): The backend infrastructure to enable to sending of web analytics data, transformation and enrichtment, as well as persisting the data in S3
+* [tracking-library](tracking-library/README.md): The client-side tracking library implementation
 
 ## Previous version 1.0
 You can find the previous version 1.0 of Ownstats in the [versions/v1](https://github.com/ownstats/ownstats/tree/versions/v1) branch, or via the `1.0.0` tag.

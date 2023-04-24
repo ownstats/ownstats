@@ -1,0 +1,19 @@
+{
+  "type": "module",
+  "source": "src/ownstats.js",
+  "exports": {
+    "require": "./dist/ownstats.cjs",
+    "default": "./dist/ownstats.modern.js"
+  },
+  "main": "./dist/ownstats.cjs",
+  "module": "./dist/ownstats.module.js",
+  "unpkg": "./dist/ownstats.umd.js",
+  "scripts": {
+    "build": "microbundle",
+    "dev": "microbundle watch"
+  },
+  "devDependencies": {
+    "eslint": "^8.39.0",
+    "microbundle": "^0.15.1"
+  }
+}
