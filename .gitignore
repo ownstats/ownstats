@@ -105,3 +105,5 @@ dist
 
 .esbuild
 .serverless
+
+.DS_Store
