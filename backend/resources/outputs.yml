@@ -1,0 +1,13 @@
+Outputs:
+  UserPoolId:
+    Description: The UserPool id
+    Value: !Ref PasswordlessOtpUserPool
+  UserPoolClientId:
+    Description: The UserPool client id
+    Value: !Ref WebUserPoolClient
+  BackendTableArn:
+    Description: ARN of the Backend DynamoDB table
+    Value: !Sub '${DataTable.Arn}'
+  BackendTableName:
+    Description: Name of the Backend DynamoDB table
+    Value: '${self:custom.dynamodb.tableName}'

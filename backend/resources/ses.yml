@@ -1,0 +1,175 @@
+Resources:
+
+  NoreplyEmail:
+    Type: Custom::SES_EmailIdentity
+    Properties:
+      ServiceToken: !GetAtt CustomEmailLambdaFunction.Arn
+      EmailAddress: 'noreply@${self:custom.domain}'
+      Region: '${self:provider.region}'
+
+  CustomEmailLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AssumeLambdaExecutionRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaRole
+      Policies:
+        - PolicyName: ProvisionSESEmailIdentities
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AllowSESEmailIdentityProvisioning
+                Effect: Allow
+                Action:
+                  - ses:DeleteIdentity
+                  - ses:VerifyEmailIdentity
+                Resource: '*'
+
+  # See: https://github.com/medmunds/aws-cfn-ses-domain/releases/tag/v0.3
+  CustomEmailLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: CloudFormation custom SES email identity provisioning
+      Handler: index.handle_email_identity_request
+      Role: !GetAtt CustomEmailLambdaExecutionRole.Arn
+      Runtime: python3.9
+      Environment:
+        Variables:
+          LOG_LEVEL: INFO
+      Code:
+        ZipFile: |
+          import logging
+          import os
+          import json
+          from urllib.error import HTTPError
+          from urllib.request import Request, urlopen
+
+          import boto3
+          from botocore.exceptions import BotoCoreError, ClientError
+
+
+          logger = logging.getLogger()
+          logger.setLevel(os.getenv("LOG_LEVEL", "WARNING"))
+
+
+          DEFAULT_PROPERTIES = {
+              "EmailAddress": "",
+              "Region": os.getenv("AWS_REGION"),
+          }
+
+
+          SUCCESS = "SUCCESS"
+          FAILED = "FAILED"
+
+
+          def send(event, context, response_status, reason=None, response_data=None, physical_resource_id=None):
+              response_body = json.dumps({
+                  "Status": response_status,
+                  "Reason": reason or "See the details in CloudWatch Log Stream: {}".format(context.log_stream_name),
+                  "PhysicalResourceId": physical_resource_id or context.log_stream_name,
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "Data": response_data or {}
+              })
+              logger.info("Sending response %r", response_body)
+
+              request = Request(event["ResponseURL"], method="PUT",
+                                data=response_body.encode("utf-8"),
+                                headers={"Content-Type": ""})  # "application/json" will cause 403
+              try:
+                  response = urlopen(request)
+              except HTTPError as exc:
+                  logger.exception("Error sending response: code=%s", exc.code)
+                  return False
+              else:
+                  logger.info("Successfully sent response: status=%s reason=%s", response.status, response.reason)
+                  return True
+
+
+          def format_arn(partition=None, service=None, region=None, account=None,
+               resource=None, resource_type=None, resource_name=None,
+               defaults_from=None):
+              """Return an ARN composed from the specified components.
+              Provide either resource or both resource_type and resource_name.
+              defaults_from can be an existing ARN, which will be used to fill in any
+              missing components.
+              See https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_identifiers.html
+              for the format.
+              """
+              if resource is None and resource_type is not None:
+                  resource = f"{resource_type}/{resource_name}"
+              if defaults_from is not None:
+                  try:
+                      _arn, _partition, _service, _region, _account, _resource = defaults_from.split(":")
+                  except (TypeError, ValueError):
+                      raise ValueError(f"Invalid ARN in defaults_from={defaults_from!r}")
+                  partition = partition if partition is not None else _partition
+                  service = service if service is not None else _service
+                  region = region if region is not None else _region
+                  account = account if account is not None else _account
+                  resource = resource if resource is not None else _resource
+
+              return f"arn:{partition}:{service}:{region}:{account}:{resource}"
+          
+
+          def handle_email_identity_request(event, context):
+              logger.info("Received event %r", event)
+
+              properties = DEFAULT_PROPERTIES.copy()
+              properties.update(event["ResourceProperties"])
+              logger.info("Expanded properties to %r", properties)
+
+              # Clean and validate inputs
+              try:
+                  properties["EmailAddress"] = properties["EmailAddress"].strip()
+              except (AttributeError, TypeError):
+                  pass
+              email_address = properties["EmailAddress"]
+
+              if not email_address:
+                  return send(event, context, FAILED,
+                              reason="The 'EmailAddress' property is required.",
+                              physical_resource_id="MISSING")
+
+              ses = boto3.client("ses", region_name=properties["Region"])
+
+              # Use an SES Identity ARN as the PhysicalResourceId - see:
+              # https://docs.aws.amazon.com/IAM/latest/UserGuide/list_amazonses.html#amazonses-resources-for-iam-policies
+              email_arn = format_arn(
+                  service="ses", region=properties["Region"],
+                  resource_type="identity", resource_name=email_address,
+                  defaults_from=event["StackId"])  # current stack's ARN has account and partition
+
+              try:
+                  if event["RequestType"] == "Delete":
+                      response = ses.delete_identity(Identity=email_address)
+                      logger.info("SES:DeleteIdentity(Identity=%r) => %r", email_address, response)
+                  else:
+                      # Both Create and Update validate the new EmailAddress.
+                      # (For Update, the change in physical_resource_id will cause CloudFormation
+                      # to issue a Delete on the old EmailAddress after this request succeeds.)
+                      response = ses.verify_email_identity(EmailAddress=email_address)
+                      logger.info("SES:VerifyEmailIdentity(EmailAddress=%r) => %r", email_address, response)
+              except (BotoCoreError, ClientError) as error:
+                  # for ClientError, might be helpful to look at error.response, too
+                  logger.exception("Error updating SES: %s", error)
+                  return send(event, context, FAILED,
+                              reason=str(error), physical_resource_id=email_arn)
+
+              outputs = {
+                  "Arn": email_arn,
+                  "EmailAddress": email_address,
+                  "Region": properties["Region"],
+              }
+              return send(event, context, SUCCESS,
+                          response_data=outputs, physical_resource_id=email_arn)
+

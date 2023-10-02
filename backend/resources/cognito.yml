@@ -1,0 +1,76 @@
+Resources:    
+  PasswordlessOtpUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: '${self:custom.cognito.userPoolName}'
+      UsernameConfiguration:
+        CaseSensitive: false
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        # this is only to satisfy Cognito requirements
+        # we won't be using passwords, but we also don't
+        # want weak passwords in the system ;-)
+        PasswordPolicy:
+          MinimumLength: 16
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireUppercase: true
+          RequireSymbols: true
+      Schema:
+        - AttributeDataType: String
+          Mutable: false
+          Required: true
+          Name: email
+          StringAttributeConstraints: 
+            MinLength: '8'
+      LambdaConfig:
+        PreSignUp: !GetAtt PreSignUpLambdaFunction.Arn
+        DefineAuthChallenge: !GetAtt DefineAuthChallengeLambdaFunction.Arn
+        CreateAuthChallenge: !GetAtt CreateAuthChallengeLambdaFunction.Arn
+        VerifyAuthChallengeResponse: !GetAtt VerifyAuthChallengeResponseLambdaFunction.Arn
+
+  WebUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: '${self:service}-amplify-user-pool-client-${self:provider.stage}'
+      UserPoolId: !Ref PasswordlessOtpUserPool
+      RefreshTokenValidity: 365
+      ExplicitAuthFlows:
+        - ALLOW_CUSTOM_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+  UserPoolPreSignUpLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:invokeFunction
+      Principal: cognito-idp.amazonaws.com
+      FunctionName: !Ref PreSignUpLambdaFunction
+      SourceArn: !GetAtt PasswordlessOtpUserPool.Arn
+
+  UserPoolDefineAuthChallengeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:invokeFunction
+      Principal: cognito-idp.amazonaws.com
+      FunctionName: !Ref DefineAuthChallengeLambdaFunction
+      SourceArn: !GetAtt PasswordlessOtpUserPool.Arn
+
+  UserPoolCreateAuthChallengeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:invokeFunction
+      Principal: cognito-idp.amazonaws.com
+      FunctionName: !Ref CreateAuthChallengeLambdaFunction
+      SourceArn: !GetAtt PasswordlessOtpUserPool.Arn
+
+  UserPoolVerifyAuthChallengeResponseLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:invokeFunction
+      Principal: cognito-idp.amazonaws.com
+      FunctionName: !Ref VerifyAuthChallengeResponseLambdaFunction
+      SourceArn: !GetAtt PasswordlessOtpUserPool.Arn

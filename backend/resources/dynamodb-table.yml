@@ -1,0 +1,81 @@
+Resources: 
+  DataTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      TableName: '${self:custom.dynamodb.tableName}'
+      KeySchema: 
+        - AttributeName: 'partitionKey'
+          KeyType: 'HASH'
+        - AttributeName: 'sortKey'
+          KeyType: 'RANGE'
+      AttributeDefinitions: 
+        - AttributeName: partitionKey
+          AttributeType: S
+        - AttributeName: sortKey
+          AttributeType: S
+        - AttributeName: apiKey
+          AttributeType: S
+        - AttributeName: organizationId
+          AttributeType: S
+        - AttributeName: organizationName
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: stripeCustomerId
+          AttributeType: S
+        - AttributeName: domainName
+          AttributeType: S
+        - AttributeName: customDomainName
+          AttributeType: S
+      GlobalSecondaryIndexes:
+        - IndexName: apikey-index
+          KeySchema:
+            - AttributeName: apiKey
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: organization-index
+          KeySchema:
+            - AttributeName: organizationId
+              KeyType: HASH
+            - AttributeName: 'sortKey'
+              KeyType: 'RANGE'
+          Projection:
+            ProjectionType: ALL
+        - IndexName: organization-name-index
+          KeySchema:
+            - AttributeName: organizationName
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: domain-name-index
+          KeySchema:
+            - AttributeName: domainName
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: custom-domain-name-index
+          KeySchema:
+            - AttributeName: customDomainName
+              KeyType: HASH
+            - AttributeName: organizationId
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: user-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+            - AttributeName: 'sortKey'
+              KeyType: 'RANGE'
+          Projection:
+            ProjectionType: ALL
+        - IndexName: stripe-customer-index
+          KeySchema:
+            - AttributeName: stripeCustomerId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      #StreamSpecification:
+      #  StreamViewType: NEW_AND_OLD_IMAGES

@@ -1,0 +1,44 @@
+{
+  "name": "ownstats-backend",
+  "version": "0.1.0",
+  "description": "Host your own website statistics analytics on AWS",
+  "scripts": {
+    "cfn-lint": "cfn-lint .serverless/cloudformation-template-update-stack.json",
+    "package": "sls package",
+    "test": "jest",
+    "qa": "npm run package && npm run cfn-lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:ownstats/ownstats.git"
+  },
+  "author": {
+    "name": "TobiLG",
+    "email": "tobilg@gmail.com",
+    "url": "https://github.com/tobilg"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ownstats/ownstats/issues"
+  },
+  "homepage": "https://github.com/ownstats/ownstats#readme",
+  "devDependencies": {
+    "esbuild": "^0.18.12",
+    "esbuild-jest": "^0.5.0",
+    "jest": "^29.6.1",
+    "serverless-esbuild": "^1.46.0",
+    "serverless-iam-roles-per-function": "next",
+    "serverless-prune-plugin": "^2.0.2"
+  },
+  "dependencies": {
+    "aws-embedded-metrics": "^4.1.0",
+    "aws-sdk": "2.1414.0",
+    "bunyan": "^1.8.15",
+    "dayjs": "^1.11.9"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.js?$": "esbuild-jest"
+    }
+  }
+}
