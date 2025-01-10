@@ -1,0 +1,38 @@
+Resources:
+  # DynamoDB table for storing the generated file info
+  DataTable: 
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      TableName: '${self:custom.dynamodb.name}'
+      KeySchema: 
+        - AttributeName: 'partitionKey'
+          KeyType: 'HASH'
+        - AttributeName: 'sortKey'
+          KeyType: 'RANGE'
+      AttributeDefinitions: 
+        - AttributeName: partitionKey
+          AttributeType: S
+        - AttributeName: sortKey
+          AttributeType: S
+        - AttributeName: domainKey
+          AttributeType: S
+        - AttributeName: fileEventDate
+          AttributeType: S
+        - AttributeName: s3Key
+          AttributeType: S
+      GlobalSecondaryIndexes:
+        - IndexName: domain-key-index
+          KeySchema:
+            - AttributeName: domainKey
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: event-date-index
+          KeySchema:
+            - AttributeName: fileEventDate
+              KeyType: HASH
+            - AttributeName: s3Key
+              KeyType: 'RANGE'
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST

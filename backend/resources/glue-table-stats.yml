@@ -1,0 +1,74 @@
+Resources:
+  # Glue table for pageviews and visits statistics
+  StatsTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref 'AWS::AccountId'
+      DatabaseName: !Ref Database
+      TableInput:
+        Name: 'stats'
+        Description: 'Pageviews and visitors aggregation table'
+        TableType: EXTERNAL_TABLE
+        Parameters: { 'has_encrypted_data': 'false', 'parquet.compression': 'SNAPPY' }
+        PartitionKeys:
+          - Name: domain_name
+            Type: string
+          - Name: event_date
+            Type: string
+        StorageDescriptor:
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          Columns:
+            # Dates
+            - Name: event_hour
+              Type: int
+            # Location
+            - Name: edge_city
+              Type: string
+            - Name: edge_country
+              Type: string
+            - Name: edge_latitude
+              Type: float
+            - Name: edge_longitude
+              Type: float
+            # Referer
+            - Name: referrer_domain_name
+              Type: string
+            # Browser
+            - Name: browser_name
+              Type: string
+            - Name: browser_os_name
+              Type: string
+            # Device
+            - Name: device_type
+              Type: string
+            - Name: device_vendor
+              Type: string
+            # UTM
+            - Name: utm_source
+              Type: string
+            - Name: utm_campaign
+              Type: string
+            - Name: utm_medium
+              Type: string
+            - Name: utm_content
+              Type: string
+            - Name: utm_term
+              Type: string
+            # Request
+            - Name: request_path
+              Type: string
+            # Page view
+            - Name: page_views_cnt
+              Type: int
+            # Visitor
+            - Name: visitor_cnt
+              Type: int
+            # Calculated measures
+            - Name: bounces_cnt
+              Type: int
+            - Name: visit_duration_sec_avg
+              Type: int
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: !Sub 's3://${CuratedBucket}/${self:custom.prefixes.aggregated}/stats/'
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe

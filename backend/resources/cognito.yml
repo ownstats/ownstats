@@ -1,0 +1,118 @@
+Resources:    
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: ${self:custom.cognito.userPoolName}
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: True
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: True
+          RequireNumbers: True
+          RequireSymbols: False
+          RequireUppercase: True
+          TemporaryPasswordValidityDays: 90
+      Schema:
+        - AttributeDataType: String
+          Name: email
+          Required: True
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: '${self:service}-userpool-client-${self:provider.stage}'
+      UserPoolId: !Ref CognitoUserPool
+      ExplicitAuthFlows:
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+
+  CognitoIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties: 
+      IdentityPoolName: '${self:service}-identity-pool-${self:provider.stage}'
+      AllowUnauthenticatedIdentities: False
+      CognitoIdentityProviders: 
+        - ClientId: !Ref 'CognitoUserPoolClient'
+          ProviderName: !GetAtt 'CognitoUserPool.ProviderName'
+      
+  CognitoIdentityPoolRoleAttachments:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties: 
+      IdentityPoolId: !Ref 'CognitoIdentityPool'
+      Roles:
+        authenticated: !GetAtt 'AuthenticatedRole.Arn'
+
+  # See https://aws.amazon.com/blogs/mobile/understanding-amazon-cognito-authentication-part-3-roles-and-policies/
+  # See https://docs.aws.amazon.com/cognito/latest/developerguide/using-attributes-for-access-control-policy-example.html
+  # See https://aws.amazon.com/de/blogs/compute/protecting-an-aws-lambda-function-url-with-amazon-cloudfront-and-lambdaedge/
+  AuthenticatedRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: ${self:service}-cognito-authenticated-role-${self:provider.stage}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+            Action:
+              - 'sts:AssumeRoleWithWebIdentity'
+          - Effect: 'Allow'
+            Principal:
+              Federated: 
+                - 'cognito-identity.amazonaws.com'
+            Action:
+              - 'sts:AssumeRoleWithWebIdentity'
+              - 'sts:TagSession'
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud: !Ref CognitoIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr: authenticated
+      # See https://sst.dev/chapters/configure-cognito-identity-pool-in-serverless.html
+      Policies:
+        - PolicyName: ${self:service}-cognito-authenticated-policy-${self:provider.stage}
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'cognito-sync:*'
+                  - 'cognito-identity:*'
+                  - 'mobileanalytics:PutEvents'
+                Resource: '*'
+              # Invoke Function URL Lambda
+              - Effect: 'Allow'
+                Action:
+                  - 'lambda:InvokeFunctionUrl'
+                Resource:
+                  - !GetAtt StreamingQueryLambdaFunction.Arn
+                Condition:
+                  StringEquals:
+                    lambda:FunctionUrlAuthType: 'AWS_IAM'
+              # Directly read DuckDB database from S3
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Join ['', [!GetAtt CuratedBucket.Arn, '/duckdb/data.duckdb']]
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt CuratedBucket.Arn
+                Condition:
+                  StringLike:
+                    's3:prefix': 
+                      - 'duckdb/*'

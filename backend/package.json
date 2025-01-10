@@ -1,0 +1,55 @@
+{
+  "name": "ownstats-analytics-backend",
+  "version": "0.1.0",
+  "description": "Host your own website statistics analytics on AWS",
+  "scripts": {
+    "cfn-lint": "cfn-lint .serverless/cloudformation-template-update-stack.json",
+    "package": "sls package",
+    "qa": "npm run package && npm run cfn-lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:ownstats/ownstats.git"
+  },
+  "author": {
+    "name": "TobiLG",
+    "email": "tobilg@gmail.com",
+    "url": "https://github.com/tobilg"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ownstats/ownstats/issues"
+  },
+  "homepage": "https://github.com/ownstats/ownstats#readme",
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/bunyan": "^1.8.11",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.10.5",
+    "@types/ua-parser-js": "^0.7.39",
+    "serverless": "^3.40.0",
+    "serverless-esbuild": "^1.54.6",
+    "serverless-esm-layer": "^1.2.0",
+    "serverless-iam-roles-per-function": "^3.2.0",
+    "serverless-prune-plugin": "^2.1.0",
+    "serverless-s3-sync": "^3.4.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "aws-edge-locations": "^0.6.1",
+    "aws-embedded-metrics": "^4.2.0",
+    "aws-lambda": "^1.0.7",
+    "aws-sdk": "2.1505.0",
+    "bunyan": "^1.8.15",
+    "dayjs": "^1.11.13",
+    "duckdb": "^1.1.1",
+    "isbot": "^3.7.1",
+    "nanoid": "^5.0.8",
+    "ua-parser-js": "^1.0.37"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.ts?$": "esbuild-jest"
+    }
+  }
+}

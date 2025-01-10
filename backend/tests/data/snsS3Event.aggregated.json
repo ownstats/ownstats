@@ -1,0 +1,20 @@
+{
+	"Records": [{
+		"EventSource": "aws:sns",
+		"EventVersion": "1.0",
+		"EventSubscriptionArn": "arn:aws:sns:us-east-1:562552715877:mybucket-prd-notifications:35500481-dccb-418c-8c0a-6f7f4a89261f",
+		"Sns": {
+			"Type": "Notification",
+			"MessageId": "706a3969-181e-5d06-acae-65deebbc447d",
+			"TopicArn": "arn:aws:sns:us-east-1:111111111111:mybucket-prd-notifications",
+			"Subject": "Amazon S3 Notification",
+			"Message": "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\",\"eventTime\":\"2023-04-18T01:24:48.724Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:AROAYF6WBHJSQJJQLAPRD:AWSFirehoseToS3DP\"},\"requestParameters\":{\"sourceIPAddress\":\"3.239.192.246\"},\"responseElements\":{\"x-amz-request-id\":\"WQ7EN0DC1X21SAD8\",\"x-amz-id-2\":\"GH25Lj2NrzEj3e7hD+PD+MYFRUWHMOmSmptWUm+ms26AcxUtU/LWjDDWxRdqUOtyGs9bFranGQcHbziM+jysx+c/zVIKWyv/\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"db6e9538-3673-42fd-aa7a-66b3b4a9a487\",\"bucket\":{\"name\":\"mybucket-prd\",\"ownerIdentity\":{\"principalId\":\"A3JBS2LU278SJ4\"},\"arn\":\"arn:aws:s3:::mybucket-prd\"},\"object\":{\"key\":\"aggregated/stats/domain_name=mydomain.com/event_date=2022-11-29/data_0.parquet\",\"size\":9999,\"eTag\":\"185a4567fe5c9aaccfe13f1495f349a5\",\"sequencer\":\"00643DF1609699E0A6\"}}}]}",
+			"Timestamp": "2023-04-18T01:24:50.139Z",
+			"SignatureVersion": "1",
+			"Signature": "fCaqUAReIpiVJbvneeWw702ldXHMlWM2mQ3KWTb2VzfWW37+ySrGareU//6dgbHVZk7CieDIa3QcIeLmNs+Cwo8yhHLwMlXDYcxBh7DVUurYtCO/KO6d+fmEhnaVfGmAc5XzZylw0uOYz+uNDsZGLP2PSFLx05/W8G8XY2nh/A8SE6daYOsj5K4GngXPEhVCqKISDyYgcUZBeRpSbb4dkmdA7cF1A35QW48gM7Obv+nGUuqd3pgyFcGYzYYToN3TzK2D4d7v2Tc4E/evFj8fS39AmwssJBs4Cwil8l/42GP5iWb3Cg+V0HKcLHkqwcOHq+GSAYH+0utD6ivSwSFPJg==",
+			"SigningCertUrl": "https://sns.us-east-1.amazonaws.com/SimpleNotificationService-56e67fcb41f6fec09b0196692625d385.pem",
+			"UnsubscribeUrl": "https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:111111111111:mybucket-prd-notifications:35500481-dccb-418c-8c0a-6f7f4a89261f",
+			"MessageAttributes": {}
+		}
+	}]
+}

@@ -1,0 +1,359 @@
+service: ownstats-${file(../.ownstats.json):id}-backend
+
+frameworkVersion: '3'
+useDotenv: true
+projectDir: '../'
+
+plugins:
+  - serverless-iam-roles-per-function
+  - serverless-prune-plugin
+  - serverless-s3-sync
+  - serverless-esbuild
+  - serverless-esm-layer
+
+custom:
+
+  # S3 buckets
+  s3:
+    buckets:
+      raw: '${self:service}-raw-${self:provider.stage}'
+      cleaned: '${self:service}-cleaned-${self:provider.stage}'
+      curated: '${self:service}-curated-${self:provider.stage}'
+      distribution: '${self:service}-cdn-${self:provider.stage}'
+      frontend: '${self:service}-frontend-${self:provider.stage}'
+
+  # Glue database name
+  glue:
+    database: ${self:service}
+
+  # SNS
+  sns:
+    topicName: '${self:service}-bucket-notifications'
+
+  # DynamoDB
+  dynamodb:
+    name: '${self:service}-table-${self:provider.stage}'
+
+  # Cognito
+  cognito:
+    userPoolName: '${self:service}-userpool-${self:provider.stage}'
+  
+  # Define the default Kinesis settings
+  kinesis:
+    data:
+      shards: 1
+      name: '${self:service}-data-stream-${self:provider.stage}'
+    delivery:
+      name: '${self:service}-delivery-stream-${self:provider.stage}'
+      limits:
+        intervalInSeconds: 900
+        sizeInMB: 128
+
+  # Define the default CloudWatch logs settings
+  logs:
+    retentionInDays: 7
+    groupName: 'kinesis/${self:custom.kinesis.delivery.name}'
+    streamName: 'KinesisFirehoseLogStream'
+
+  # Prefixes
+  prefixes:
+    raw: 'event_date=!{timestamp:yyyy}-!{timestamp:MM}-!{timestamp:dd}/'
+    incoming: incoming
+    aggregated: aggregated
+    error: 'error/!{timestamp:yyyy}-!{timestamp:MM}-!{timestamp:dd}/!{firehose:error-output-type}/'
+
+  # esbuild settings
+  esbuild:
+    bundle: true
+    minify: false
+    format: "esm"
+    outputFileExtension: ".mjs"
+    platform: "node"
+    target: "esnext"
+    banner:
+      js: import { createRequire } from 'module';const require = createRequire(import.meta.url);
+    exclude:
+      - duckdb
+
+  # Prune plugin
+  prune:
+    automatic: true
+    number: 3
+
+  # S3 sync plugin configuration
+  s3Sync:
+    - bucketName: ${self:custom.s3.buckets.distribution}
+      localDir: src
+      deleteRemoved: false
+      params:
+        - hello.gif:
+            ContentType: 'image/gif'
+        - noscript.gif:
+            ContentType: 'image/gif'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ${file(../.ownstats.json):aws.region, 'us-east-1'}
+  stage: ${file(../.ownstats.json):aws.stage, 'prd'}
+  # Deployment bucket settings
+  deploymentBucket:
+    name: ownstats-${file(../.ownstats.json):id}-deploymentbucket-${file(../.ownstats.json):aws.stage, 'prd'}
+    serverSideEncryption: AES256
+  logRetentionInDays: 7
+  endpointType: REGIONAL
+  environment:
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1' # Enable HTTP keep-alive connections for the AWS SDK
+    TABLE_NAME: '${self:custom.dynamodb.name}'
+    STAGE: '${self:provider.stage}'
+    LOG_LEVEL: 'debug'
+
+functions:
+
+  processKinesisRecords:
+    runtime: nodejs18.x
+    handler: functions/processing/kinesisProcessor.handler
+    description: 'Process the Kinesis Firehose records'
+    memorySize: 1024
+    timeout: 30
+    iamRoleStatementsName: '${self:service}-role-processKinesisRecords'
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: !Sub '${DataTable.Arn}'
+    environment:
+      CDN_DOMAIN_NAME: !Sub '${CFDistribution.DomainName}'
+
+  storeS3Objects:
+    handler: functions/eventing/storeS3Objects.handler
+    description: 'Process the S3 bucket notification events'
+    memorySize: 256
+    timeout: 3
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+          - dynamodb:DeleteItem
+        Resource: !Sub '${DataTable.Arn}'
+    events:
+      - sns:
+          arn: !Ref BucketNotifications
+          topicName: '${self:custom.sns.topicName}'
+
+  aggregateStats:
+    runtime: nodejs18.x
+    handler: functions/querying/aggregateStats.handler
+    memorySize: 2048
+    timeout: 900
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}/${self:custom.prefixes.incoming}/*'
+      - Effect: Allow
+        Action:
+          - s3:ListBucket
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}'
+      # See https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html#mpuAndPermissions
+      - Effect: Allow
+        Action:
+          - s3:ListBucket
+          - s3:ListBucketMultipartUploads
+          - s3:GetBucketLocation
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.curated}'
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+          - s3:PutObject
+          - s3:DeleteObject
+          - s3:AbortMultipartUpload
+          - s3:ListMultipartUploadParts
+          - s3:ListBucketMultipartUploads
+        Resource: 
+          - 'arn:aws:s3:::${self:custom.s3.buckets.curated}/${self:custom.prefixes.aggregated}/*'
+          - 'arn:aws:s3:::${self:custom.s3.buckets.curated}/${self:custom.prefixes.aggregated}'
+          - 'arn:aws:s3:::${self:custom.s3.buckets.curated}/duckdb/data.duckdb'
+    layers:
+      #- 'arn:aws:lambda:${self:provider.region}:041475135427:layer:duckdb-nodejs-x86:8'
+      - 'arn:aws:lambda:${self:provider.region}:041475135427:layer:duckdb-extensions-nodejs-x86:1'
+    environment:
+      S3_INPUT_BUCKET_NAME: '${self:custom.s3.buckets.cleaned}'
+      S3_OUTPUT_BUCKET_NAME: '${self:custom.s3.buckets.curated}'
+      S3_INPUT_PREFIX: '${self:custom.prefixes.incoming}'
+      S3_OUTPUT_PREFIX: '${self:custom.prefixes.aggregated}'
+    events:
+      - schedule:
+          name: ${self:service}-repartition-event
+          description: Repartition parquet files from yesterday
+          # Start every day at 00:16AM UTC 
+          # -> 1min after the last Kinesis batch has been processed for the day before
+          rate: cron(16 0 * * ? *)
+
+  aggregateHourlyStats:
+    runtime: nodejs18.x
+    handler: functions/querying/aggregateHourlyStats.handler
+    memorySize: 2048
+    timeout: 900
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}/${self:custom.prefixes.incoming}/*'
+      - Effect: Allow
+        Action:
+          - s3:ListBucket
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}'
+      # See https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html#mpuAndPermissions
+      - Effect: Allow
+        Action:
+          - s3:ListBucket
+          - s3:ListBucketMultipartUploads
+          - s3:GetBucketLocation
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.curated}'
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+          - s3:PutObject
+          - s3:DeleteObject
+          - s3:AbortMultipartUpload
+          - s3:ListMultipartUploadParts
+          - s3:ListBucketMultipartUploads
+        Resource: 
+          - 'arn:aws:s3:::${self:custom.s3.buckets.curated}/${self:custom.prefixes.aggregated}/*'
+          - 'arn:aws:s3:::${self:custom.s3.buckets.curated}/${self:custom.prefixes.aggregated}'
+    layers:
+      #- 'arn:aws:lambda:${self:provider.region}:041475135427:layer:duckdb-nodejs-x86:8'
+      - 'arn:aws:lambda:${self:provider.region}:041475135427:layer:duckdb-extensions-nodejs-x86:1'
+    environment:
+      S3_INPUT_BUCKET_NAME: '${self:custom.s3.buckets.cleaned}'
+      S3_OUTPUT_BUCKET_NAME: '${self:custom.s3.buckets.curated}'
+      S3_INPUT_PREFIX: '${self:custom.prefixes.incoming}'
+      S3_OUTPUT_PREFIX: '${self:custom.prefixes.aggregated}'
+    events:
+      - schedule:
+          name: ${self:service}-hourly-repartition-event
+          description: Aggregate all parquet files from today
+          # Start every hour at the 16th minute 
+          # -> 1min after the last Kinesis batch has been processed for the hour before
+          rate: cron(16 * * * ? *)
+
+  # Streaming Lambda function: Will return results as Apache Arrow IPC stream
+  streamingQuery:
+    runtime: nodejs18.x
+    handler: functions/querying/streamingQuery.handler
+    memorySize: 10240
+    timeout: 120
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: !Sub '${DataTable.Arn}/index/event-date-index'
+      - Effect: Allow
+        Action:
+          - s3:ListBucket
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.curated}'
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+        Resource:
+          - 'arn:aws:s3:::${self:custom.s3.buckets.curated}/${self:custom.prefixes.aggregated}/stats/*'
+          - 'arn:aws:s3:::${self:custom.s3.buckets.curated}/${self:custom.prefixes.aggregated}/daily-stats/*'
+          - 'arn:aws:s3:::${self:custom.s3.buckets.curated}/duckdb/data.duckdb'
+      - Effect: Allow
+        Action:
+          - s3:ListBucket
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}'
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+        Resource: 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}/${self:custom.prefixes.incoming}/*'
+    layers:
+      #- 'arn:aws:lambda:${self:provider.region}:041475135427:layer:duckdb-nodejs-x86:7'
+      - 'arn:aws:lambda:${self:provider.region}:041475135427:layer:duckdb-extensions-nodejs-x86:1'
+    environment:
+      S3_INPUT_BUCKET_NAME: '${self:custom.s3.buckets.cleaned}'
+      S3_OUTPUT_BUCKET_NAME: '${self:custom.s3.buckets.curated}'
+      S3_INPUT_PREFIX: '${self:custom.prefixes.incoming}'
+      S3_OUTPUT_PREFIX: '${self:custom.prefixes.aggregated}'
+    url:
+      invokeMode: RESPONSE_STREAM
+      authorizer: aws_iam
+      cors: true
+
+  createDomain:
+    handler: functions/api/createDomain.handler
+    memorySize: 1024
+    timeout: 5
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: !Sub '${DataTable.Arn}'
+    events:
+      - http:
+          path: domains
+          method: post
+          cors: true
+          authorizer: 
+             type: COGNITO_USER_POOLS
+             authorizerId: 
+               Ref: ApiGatewayAuthorizer
+
+  listDomains:
+    handler: functions/api/listDomains.handler
+    memorySize: 1024
+    timeout: 5
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: !Sub '${DataTable.Arn}'
+    events:
+      - http:
+          path: domains
+          method: get
+          cors: true
+          authorizer: 
+            type: COGNITO_USER_POOLS
+            authorizerId: 
+              Ref: ApiGatewayAuthorizer
+
+  deleteDomain:
+    handler: functions/api/deleteDomain.handler
+    memorySize: 1024
+    timeout: 5
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:DeleteItem
+        Resource: !Sub '${DataTable.Arn}'
+    events:
+      - http:
+          path: domains
+          method: delete
+          cors: true
+          authorizer: 
+             type: COGNITO_USER_POOLS
+             authorizerId: 
+               Ref: ApiGatewayAuthorizer
+
+resources:
+
+  - ${file(resources/apigw-authorizer.yml)}
+  - ${file(resources/sns-topic.yml)}
+  - ${file(resources/s3-buckets.yml)}
+  - ${file(resources/cf-distribution.yml)}
+  - ${file(resources/dynamodb-table.yml)}
+  - ${file(resources/cognito.yml)}
+  - ${file(resources/kinesis.yml)}
+  - ${file(resources/glue-db.yml)}
+  - ${file(resources/glue-table-incoming-events.yml)}
+  - ${file(resources/glue-table-stats.yml)}
+  - ${file(resources/glue-table-events.yml)}
+  - ${file(resources/outputs.yml)}
+
+package:
+  individually: true

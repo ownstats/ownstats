@@ -1,0 +1,108 @@
+Resources:
+  CloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: '${self:service}-oai'
+
+  CFRealtimeLogsConfig:
+    Type: AWS::CloudFront::RealtimeLogConfig
+    Properties: 
+      EndPoints: 
+        - StreamType: Kinesis
+          KinesisStreamConfig:
+            # See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/real-time-logs.html#understand-real-time-log-config-iam-role
+            RoleArn: !GetAtt 'AnalyticsKinesisDataRole.Arn'
+            StreamArn: !GetAtt 'AnalyticsKinesisStream.Arn'
+      # See https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/real-time-logs.html#understand-real-time-log-config-fields
+      Fields: 
+        - timestamp
+        - c-ip
+        - sc-status
+        - cs-uri-stem
+        - cs-bytes
+        - x-edge-location
+        - time-taken
+        - cs-user-agent
+        - cs-referer
+        - cs-uri-query
+        - x-edge-result-type
+        - asn
+      Name: '${self:service}-cdn-realtime-log-config'
+      # IMPORTANT: This setting make sure we receive all the log lines, otherwise it's just sampled!
+      SamplingRate: 100
+
+  CFDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt DistributionBucket.DomainName
+            OriginPath: ''
+            Id: S3BucketOrigin
+            S3OriginConfig:
+              OriginAccessIdentity:
+                Fn::Join:
+                  - ''
+                  - - 'origin-access-identity/cloudfront/'
+                    - !Ref CloudFrontOriginAccessIdentity
+        DefaultCacheBehavior:
+          Compress: True
+          # Realtime logs go here
+          RealtimeLogConfigArn: !Ref CFRealtimeLogsConfig
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          TargetOriginId: S3BucketOrigin
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
+        Enabled: true
+        HttpVersion: 'http2'
+        PriceClass: 'PriceClass_All'
+
+  FrontendCloudFrontOriginAccessIdentity:
+    Type: 'AWS::CloudFront::CloudFrontOriginAccessIdentity'
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: '${self:service}-oai'
+
+  FrontendCFDistribution:
+    Type: 'AWS::CloudFront::Distribution'
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt FrontendBucket.DomainName
+            OriginPath: ''
+            Id: S3BucketOrigin
+            S3OriginConfig:
+              OriginAccessIdentity:
+                Fn::Join:
+                  - ''
+                  - - 'origin-access-identity/cloudfront/'
+                    - !Ref FrontendCloudFrontOriginAccessIdentity
+        Comment: 'Frontend CloudFront distribution'
+        DefaultRootObject: 'index.html'
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: '/index.html'
+        DefaultCacheBehavior:
+          Compress: True
+          DefaultTTL: 3600
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          TargetOriginId: S3BucketOrigin
+          ForwardedValues:
+            QueryString: False
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
+        Enabled: True
+        HttpVersion: 'http3'
+        PriceClass: 'PriceClass_All'

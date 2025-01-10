@@ -1,0 +1,247 @@
+Resources:
+  # Kinesis Data Stream to receive the CloudFront realtime logs
+  AnalyticsKinesisStream:
+    Type: AWS::Kinesis::Stream
+    Properties: 
+      Name: ${self:custom.kinesis.data.name}
+      RetentionPeriodHours: 24
+      ShardCount: ${self:custom.kinesis.data.shards}
+      StreamModeDetails: 
+        StreamMode: PROVISIONED
+
+  # Kinesis Firehose Delivery Stream to process and store the incoming data to S3
+  AnalyticsKinesisFirehose:
+    Type: 'AWS::KinesisFirehose::DeliveryStream'
+    # Magic!
+    DependsOn:
+      - AnalyticsKinesisFirehosePolicy
+    Properties:
+      DeliveryStreamName: ${self:custom.kinesis.delivery.name}
+      DeliveryStreamType: KinesisStreamAsSource
+      # Source configuration
+      KinesisStreamSourceConfiguration:
+        KinesisStreamARN: !GetAtt 'AnalyticsKinesisStream.Arn'
+        RoleARN: !GetAtt 'AnalyticsKinesisFirehoseRole.Arn'
+      # Necessary configuration to transfrom and write data to S3 as parquet files
+      # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-extendeds3destinationconfiguration.html
+      ExtendedS3DestinationConfiguration:
+        BucketARN: !GetAtt 'CleanedBucket.Arn'
+        BufferingHints:
+          IntervalInSeconds: ${self:custom.kinesis.delivery.limits.intervalInSeconds}
+          SizeInMBs: ${self:custom.kinesis.delivery.limits.sizeInMB}
+        # This enables logging to CloudWatch for better debugging possibilities
+        CloudWatchLoggingOptions:
+          Enabled: True
+          LogGroupName: ${self:custom.logs.groupName}
+          LogStreamName: ${self:custom.logs.streamName}
+        # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-dataformatconversionconfiguration.html
+        DataFormatConversionConfiguration:
+          Enabled: True
+          # Define the input format
+          # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-inputformatconfiguration.html
+          InputFormatConfiguration: 
+            Deserializer: 
+              OpenXJsonSerDe: 
+                CaseInsensitive: True
+          # Define the output format
+          # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-outputformatconfiguration.html
+          OutputFormatConfiguration: 
+            Serializer: 
+              ParquetSerDe: 
+                Compression: SNAPPY
+                WriterVersion: V1
+          # The schema configuration based on Glue tables
+          # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-schemaconfiguration.html
+          SchemaConfiguration: 
+            RoleArn: !GetAtt 'AnalyticsKinesisFirehoseRole.Arn'
+            DatabaseName: '${self:custom.glue.database}'
+            TableName: 'incoming_events'
+        # Enable dynamic partitioning
+        # See https://docs.aws.amazon.com/firehose/latest/dev/dynamic-partitioning.html
+        # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-dynamicpartitioningconfiguration.html
+        DynamicPartitioningConfiguration:
+           Enabled: True
+        # Enable Lambda function for pre-processing the Kinesis records
+        ProcessingConfiguration:
+          Enabled: True
+          # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-processorparameter.html
+          # See https://github.com/aws-cloudformation/cloudformation-coverage-roadmap/issues/915#issuecomment-911822807
+          Processors: 
+            - Type: Lambda
+              Parameters: 
+                - ParameterName: NumberOfRetries
+                  ParameterValue: 3
+                - ParameterName: BufferIntervalInSeconds
+                  ParameterValue: 60
+                - ParameterName: BufferSizeInMBs
+                  ParameterValue: 3
+                - ParameterName: LambdaArn
+                  ParameterValue: !GetAtt 'ProcessKinesisRecordsLambdaFunction.Arn'
+        # Enable backups for the raw incoming data
+        S3BackupMode: Enabled
+        # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-kinesisfirehose-deliverystream-s3destinationconfiguration.html
+        S3BackupConfiguration:
+          BucketARN: !GetAtt 'RawBucket.Arn'
+          BufferingHints:
+            IntervalInSeconds: ${self:custom.kinesis.delivery.limits.intervalInSeconds}
+            SizeInMBs: ${self:custom.kinesis.delivery.limits.sizeInMB}
+          # Disable logging to CloudWatch for raw data
+          CloudWatchLoggingOptions:
+            Enabled: false
+          CompressionFormat: GZIP
+          Prefix: '${self:custom.prefixes.raw}'
+          ErrorOutputPrefix: '${self:custom.prefixes.error}'
+          RoleARN: !GetAtt 'AnalyticsKinesisFirehoseRole.Arn'
+        RoleARN: !GetAtt 'AnalyticsKinesisFirehoseRole.Arn'
+        # Define output S3 prefixes
+        # See https://docs.aws.amazon.com/firehose/latest/dev/dynamic-partitioning.html#dynamic-partitioning-s3bucketprefix
+        # See https://docs.aws.amazon.com/firehose/latest/dev/s3-prefixes.html#dynamic-partitioning-namespaces
+        Prefix: '${self:custom.prefixes.incoming}/domain_name=!{partitionKeyFromLambda:domain_name}/event_type=!{partitionKeyFromLambda:event_type}/event_date=!{partitionKeyFromLambda:event_date}/'
+        ErrorOutputPrefix: '${self:custom.prefixes.error}'
+
+  # Establish trust between CloudFront and the Kinesis Data Stream
+  AnalyticsKinesisDataRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: ${self:service}-data-role-${self:provider.stage}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'AllowCloudFront'
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+  
+  # Enable CloudFront to write to the Kinesis Data Stream
+  AnalyticsKinesisDataPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ${self:service}-data-policy-${self:provider.stage}
+      Roles:
+        - !Ref AnalyticsKinesisDataRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'KinesisPermissions'
+            Effect: Allow
+            Action:
+              - kinesis:DescribeStreamSummary
+              - kinesis:DescribeStream
+              - kinesis:PutRecord
+              - kinesis:PutRecords
+            Resource:
+              - !GetAtt 'AnalyticsKinesisStream.Arn'
+
+  # Establish trust between the Kinesis Data Stream and the Kinesis Firehose Delivery Stream
+  AnalyticsKinesisFirehoseRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: ${self:service}-firehose-role-${self:provider.stage}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'AllowFirehose'
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref 'AWS::AccountId'
+          - Sid: 'AllowKinesis'
+            Effect: Allow
+            Principal:
+              Service: kinesis.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+
+  # Define all the necessary permissions for the Kinesis Firehose Delivery Stream
+  AnalyticsKinesisFirehosePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ${self:service}-firehose-policy-${self:provider.stage}
+      Roles:
+        - !Ref AnalyticsKinesisFirehoseRole
+      # See https://docs.aws.amazon.com/firehose/latest/dev/controlling-access.html#using-iam-s3
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Allow reading from the Kinesis Data Stream
+          - Effect: Allow
+            Action:
+              - kinesis:DescribeStream
+              - kinesis:GetShardIterator
+              - kinesis:GetRecords
+              - kinesis:ListShards
+            Resource: !GetAtt 'AnalyticsKinesisStream.Arn'
+          # Allow accessing the Glue table information
+          - Effect: Allow
+            Action:
+              - glue:GetTable
+              - glue:GetTableVersion
+              - glue:GetTableVersions
+            Resource:
+              - '*'
+          # Allow writing to raw S3 bucket destination
+          - Effect: Allow
+            Action:
+              - s3:AbortMultipartUpload
+              - s3:GetBucketLocation
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:ListBucketMultipartUploads
+              - s3:PutObject
+            Resource:
+              - 'arn:aws:s3:::${self:custom.s3.buckets.raw}'
+              - 'arn:aws:s3:::${self:custom.s3.buckets.raw}/*'
+          # Allow writing to cleaned S3 bucket destination
+          - Effect: Allow
+            Action:
+              - s3:AbortMultipartUpload
+              - s3:GetBucketLocation
+              - s3:GetObject
+              - s3:ListBucket
+              - s3:ListBucketMultipartUploads
+              - s3:PutObject
+            Resource:
+              - 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}'
+              - 'arn:aws:s3:::${self:custom.s3.buckets.cleaned}/*'
+          # Allow creating ad writing to CloudWatch LogGroups and LogStreams
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:DescribeLogStreams
+              - logs:DeleteLogStream
+            Resource:
+              - !GetAtt 'CallDataLogGroup.Arn'
+          # Allow invocation of processing Lambda function
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+              - lambda:GetFunctionConfiguration
+            Resource:
+              - !Sub '${ProcessKinesisRecordsLambdaFunction.Arn}*'
+
+  # CloudWatch LogGroup for the Kinesis Firehose Delivery Stream
+  CallDataLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: ${self:custom.logs.groupName}
+      RetentionInDays: ${self:custom.logs.retentionInDays}
+
+  # Create a LogStream
+  AnalyticsCWLogStream:
+    Type: 'AWS::Logs::LogStream'
+    DependsOn:
+      - CallDataLogGroup
+    Properties:
+      LogGroupName: ${self:custom.logs.groupName}
+      LogStreamName: ${self:custom.logs.streamName}
