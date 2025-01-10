@@ -1,0 +1,50 @@
+Resources:
+  # Glue table for events
+  EventsTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref 'AWS::AccountId'
+      DatabaseName: !Ref Database
+      TableInput:
+        Name: 'events'
+        Description: 'Events table'
+        TableType: EXTERNAL_TABLE
+        Parameters: { 'has_encrypted_data': 'false', 'parquet.compression': 'SNAPPY' }
+        PartitionKeys:
+          - Name: domain_name
+            Type: string
+          - Name: event_date
+            Type: string
+          - Name: event_name
+            Type: string
+        StorageDescriptor:
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          Columns:
+            # Dates
+            - Name: event_timestamp
+              Type: timestamp
+            # Location
+            - Name: edge_city
+              Type: string
+            - Name: edge_country
+              Type: string
+            - Name: edge_latitude
+              Type: float
+            - Name: edge_longitude
+              Type: float
+            # Request
+            - Name: request_path
+              Type: string
+            # Page view
+            - Name: page_view_id
+              Type: string
+            # Visitor
+            - Name: daily_visitor_id
+              Type: string
+            # Events
+            - Name: event_data
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: !Sub 's3://${CuratedBucket}/${self:custom.prefixes.aggregated}/events/'
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe

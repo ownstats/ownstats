@@ -1,0 +1,96 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+      {
+          "Effect": "Allow",
+          "Action": [
+              "cloudformation:CreateStack",
+              "cloudformation:UpdateStack",
+              "cloudformation:DeleteStack",
+              "cloudformation:DescribeStacks",
+              "cloudformation:ListStackResources",
+              "cloudformation:ValidateTemplate"
+          ],
+          "Resource": "arn:aws:cloudformation:*:*:stack/ownstats-47110815-backend-*/*"
+      },
+      {
+          "Effect": "Allow",
+          "Action": [
+              "iam:CreateRole",
+              "iam:DeleteRole",
+              "iam:GetRole",
+              "iam:PutRolePolicy",
+              "iam:DeleteRolePolicy",
+              "iam:AttachRolePolicy",
+              "iam:DetachRolePolicy"
+          ],
+          "Resource": "arn:aws:iam::*:role/ownstats-47110815-backend-*"
+      },
+      {
+          "Effect": "Allow",
+          "Action": [
+              "lambda:CreateFunction",
+              "lambda:DeleteFunction",
+              "lambda:GetFunction",
+              "lambda:UpdateFunctionCode",
+              "lambda:UpdateFunctionConfiguration"
+          ],
+          "Resource": "arn:aws:lambda:*:*:function:ownstats-47110815-backend-*"
+      },
+      {
+          "Effect": "Allow",
+          "Action": [
+              "logs:CreateLogGroup",
+              "logs:DeleteLogGroup",
+              "logs:CreateLogStream",
+              "logs:DeleteLogStream",
+              "logs:PutRetentionPolicy"
+          ],
+          "Resource": [
+              "arn:aws:logs:*:*:log-group:/aws/lambda/ownstats-47110815-backend-*",
+              "arn:aws:logs:*:*:log-group:kinesis/ownstats-47110815-backend-*"
+          ]
+      },
+      {
+          "Effect": "Allow",
+          "Action": [
+              "kinesis:CreateStream",
+              "kinesis:DeleteStream",
+              "kinesis:DescribeStream",
+              "kinesis:PutRecords"
+          ],
+          "Resource": "arn:aws:kinesis:*:*:stream/ownstats-47110815-backend-*"
+      },
+      {
+          "Effect": "Allow",
+          "Action": [
+              "sns:CreateTopic",
+              "sns:DeleteTopic",
+              "sns:SetTopicAttributes",
+              "sns:GetTopicAttributes"
+          ],
+          "Resource": "arn:aws:sns:*:*:ownstats-47110815-backend-*"
+      },
+      {
+          "Effect": "Allow",
+          "Action": [
+              "apigateway:POST",
+              "apigateway:PUT",
+              "apigateway:DELETE",
+              "apigateway:GET",
+              "apigateway:PATCH"
+          ],
+          "Resource": "arn:aws:apigateway:*::/restapis/*"
+      },
+      {
+          "Effect": "Allow",
+          "Action": [
+              "cognito-idp:AdminCreateUser",
+              "cognito-idp:AdminSetUserPassword",
+              "cognito-idp:AdminInitiateAuth",
+              "cognito-idp:AdminRespondToAuthChallenge"
+          ],
+          "Resource": "arn:aws:cognito-idp:*:*:userpool/*"
+      }
+  ]
+}

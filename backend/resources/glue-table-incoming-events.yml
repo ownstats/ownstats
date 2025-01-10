@@ -1,0 +1,133 @@
+Resources:
+  # Glue table for incoming events
+  IncomingEventsTable:
+    Type: AWS::Glue::Table
+    Properties:
+      CatalogId: !Ref 'AWS::AccountId'
+      DatabaseName: !Ref Database
+      TableInput:
+        Name: 'incoming_events'
+        Description: 'Incoming events table'
+        TableType: EXTERNAL_TABLE
+        Parameters: { 'has_encrypted_data': 'false', 'parquet.compression': 'SNAPPY' }
+        PartitionKeys:
+          - Name: domain_name
+            Type: string
+          - Name: event_type
+            Type: string
+          - Name: event_date
+            Type: string
+        StorageDescriptor:
+          OutputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat
+          Columns:
+            # Dates
+            - Name: event_year
+              Type: int
+            - Name: event_month
+              Type: int
+            - Name: event_day
+              Type: int
+            - Name: event_timestamp
+              Type: timestamp
+            # Delays
+            - Name: arrival_timestamp
+              Type: timestamp
+            - Name: arrival_delay_ms
+              Type: int
+            # Location
+            - Name: edge_city
+              Type: string
+            - Name: edge_state
+              Type: string
+            - Name: edge_country
+              Type: string
+            - Name: edge_country_code
+              Type: string
+            - Name: edge_latitude
+              Type: float
+            - Name: edge_longitude
+              Type: float
+            - Name: edge_id
+              Type: string
+            # Referer
+            - Name: referrer
+              Type: string
+            - Name: referrer_domain_name
+              Type: string
+            # Browser
+            - Name: browser_name
+              Type: string
+            - Name: browser_version
+              Type: string
+            - Name: browser_os_name
+              Type: string
+            - Name: browser_os_version
+              Type: string
+            - Name: browser_timezone
+              Type: string
+            - Name: browser_language
+              Type: string
+            # Device
+            - Name: device_type
+              Type: string
+            - Name: device_vendor
+              Type: string
+            - Name: device_outer_resolution
+              Type: string
+            - Name: device_inner_resolution
+              Type: string
+            - Name: device_color_depth
+              Type: int
+            - Name: device_platform
+              Type: string
+            - Name: device_memory
+              Type: float
+            - Name: device_cores
+              Type: int
+            # UTM
+            - Name: utm_source
+              Type: string
+            - Name: utm_campaign
+              Type: string
+            - Name: utm_medium
+              Type: string
+            - Name: utm_content
+              Type: string
+            - Name: utm_term
+              Type: string
+            # Request
+            - Name: request_url
+              Type: string
+            - Name: request_path
+              Type: string
+            - Name: request_query_string
+              Type: string
+            - Name: request_bytes
+              Type: int
+            - Name: request_status_code
+              Type: int
+            - Name: request_cache_status
+              Type: string
+            - Name: request_delivery_time_ms
+              Type: int
+            - Name: request_asn
+              Type: int
+            - Name: request_is_bot
+              Type: int
+            # Events
+            - Name: event_name
+              Type: string
+            - Name: event_data
+              Type: string
+            # Page view
+            - Name: page_view_id
+              Type: string
+            - Name: daily_page_view_id
+              Type: string
+            # Visitor
+            - Name: daily_visitor_id
+              Type: string
+          InputFormat: org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat
+          Location: !Sub 's3://${CleanedBucket}/${self:custom.prefixes.incoming}/'
+          SerdeInfo:
+            SerializationLibrary: org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe

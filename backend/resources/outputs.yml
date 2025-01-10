@@ -1,0 +1,49 @@
+Outputs:
+  CloudFrontDistributionId:
+    Description: CloudFront distribution id
+    Value: !Ref CFDistribution
+  CloudFrontDistributionDomainName:
+    Description: CloudFront distribution domain name
+    Value: !GetAtt 'CFDistribution.DomainName'
+  FrontendCloudFrontDistributionId:
+    Description: Frontend CloudFront distribution id
+    Value: !Ref FrontendCFDistribution
+  FrontendCloudFrontDistributionDomainName:
+    Description: Frontend CloudFront distribution domain name
+    Value: !GetAtt 'FrontendCFDistribution.DomainName'
+  DistributionBucketName:
+    Description: Distribution S3 bucket name
+    Value: !Ref DistributionBucket
+  FrontendBucketName:
+    Description: Frontend S3 bucket name
+    Value: !Ref FrontendBucket
+  RawBucketName:
+    Description: Raw data S3 bucket name
+    Value: !Ref RawBucket
+  CleanedBucketName:
+    Description: Cleaned data S3 bucket name
+    Value: !Ref CleanedBucket
+  CuratedBucketName:
+    Description: Curated data S3 bucket name
+    Value: !Ref CuratedBucket
+  UserPoolId:
+    Description: The UserPool id
+    Value: !Ref CognitoUserPool
+  UserPoolClientId:
+    Description: The UserPool client id
+    Value: !Ref CognitoUserPoolClient
+  IdentityPoolId:
+    Description: The IdentityPool id
+    Value: !Ref CognitoIdentityPool
+  BackendTableArn:
+    Description: ARN of the Backend DynamoDB table
+    Value: !Sub '${DataTable.Arn}'
+  BackendTableName:
+    Description: Name of the Backend DynamoDB table
+    Value: '${self:custom.dynamodb.name}'
+  ApiUrl:
+    Description: API Gateway base URL
+    Value: !Join [ '', [ 'https://', !Ref 'ApiGatewayRestApi', '.execute-api.', !Ref 'AWS::Region', '.', !Ref 'AWS::URLSuffix', '/prd' ] ]
+  StreamingQueryUrl:
+    Description: Streaming query URL
+    Value: !GetAtt 'StreamingQueryLambdaFunctionUrl.FunctionUrl'

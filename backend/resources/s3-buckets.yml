@@ -1,0 +1,131 @@
+Resources:
+  # S3 bucket for the assets (GIFs and JS files)
+  DistributionBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: ${self:custom.s3.buckets.distribution}
+      CorsConfiguration:
+        CorsRules: 
+          - Id: 'compressed-js-rule'
+            AllowedHeaders: 
+              - 'Content-Length'
+            AllowedMethods:
+            - GET
+            AllowedOrigins: 
+              - '*'
+
+  # S3 bucket for storing the raw data (no notifications enabled)
+  RawBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: ${self:custom.s3.buckets.raw}
+
+  # S3 bucket for storing the cleaned data
+  CleanedBucket:
+    Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - BucketNotificationPolicy
+    Properties:
+      BucketName: ${self:custom.s3.buckets.cleaned}
+      NotificationConfiguration:
+        TopicConfigurations: 
+          - Event: s3:ObjectCreated:*
+            Topic: 
+              Ref: BucketNotifications
+            Filter: 
+              S3Key: 
+                Rules: 
+                  - Name: prefix
+                    Value: '${self:custom.prefixes.incoming}/'
+          - Event: s3:ObjectRemoved:*
+            Topic: 
+              Ref: BucketNotifications
+            Filter: 
+              S3Key: 
+                Rules: 
+                  - Name: prefix
+                    Value: '${self:custom.prefixes.incoming}/'
+
+  # S3 bucket for storing the curated/aggregated data
+  CuratedBucket:
+    Type: 'AWS::S3::Bucket'
+    DependsOn:
+      - BucketNotificationPolicy
+    Properties:
+      BucketName: ${self:custom.s3.buckets.curated}
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: 
+              - GET
+              - HEAD
+            AllowedHeaders:
+              - '*'
+            AllowedOrigins: 
+              # For local development
+              - http://localhost:5173
+              # Allow frontend to access the bucket for referencing the DuckDB database file with the historical data
+              - !Join ['', ['https://', !GetAtt FrontendCFDistribution.DomainName]]
+            MaxAge: 3000
+      NotificationConfiguration:
+        TopicConfigurations: 
+          - Event: s3:ObjectCreated:*
+            Topic: 
+              Ref: BucketNotifications
+            Filter: 
+              S3Key: 
+                Rules: 
+                  - Name: prefix
+                    Value: '${self:custom.prefixes.aggregated}/'
+          - Event: s3:ObjectRemoved:*
+            Topic: 
+              Ref: BucketNotifications
+            Filter: 
+              S3Key: 
+                Rules: 
+                  - Name: prefix
+                    Value: '${self:custom.prefixes.aggregated}/'
+
+  # S3 bucket policy for the CloudFront origin access identity
+  DistributionBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: DistributionBucket
+      PolicyDocument:
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ' '
+                  - - 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity'
+                    - !Ref 'CloudFrontOriginAccessIdentity'
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub 'arn:aws:s3:::${DistributionBucket}/*'
+
+  FrontendBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: '${self:custom.s3.buckets.frontend}'
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Sid: ReadBucketContents
+            Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join:
+                  - ' '
+                  - - 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity'
+                    - !Ref FrontendCloudFrontOriginAccessIdentity
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub 'arn:aws:s3:::${FrontendBucket}/*'

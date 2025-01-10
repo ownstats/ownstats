@@ -1,0 +1,39 @@
+{
+  "name": "ownstats-client",
+  "version": "0.1.0",
+  "description": "ownstats.com browser tracking library",
+  "main": "dist/ownstats-client.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ownstats/ownstats.git"
+  },
+  "source": "src/index.js",
+  "module": "dist/ownstats-client.module.js",
+  "unpkg": "dist/ownstats-client.umd.js",
+  "scripts": {
+    "build": "microbundle --external none --sourcemap false",
+    "lint": "eslint ./src",
+    "watch": "microbundle watch",
+    "sync": "node ./scripts/deploy.mjs"
+  },
+  "author": "TobiLG <tobilg@gmail.com>",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/ownstats/ownstats/issues"
+  },
+  "homepage": "https://github.com/ownstats/ownstats#readme",
+  "devDependencies": {
+    "@aws-sdk/client-cloudfront": "^3.x",
+    "@aws-sdk/client-s3": "^3.x",
+    "@aws-sdk/credential-providers": "^3.723.0",
+    "glob": "^10.x",
+    "microbundle": "^0.15.1",
+    "mime-types": "^2.x",
+    "uglify-js": "^3.19.3"
+  },
+  "dependencies": {
+    "@analytics/core": "^0.12.9",
+    "analytics-plugin-do-not-track": "^0.1.5",
+    "analytics-plugin-tab-events": "^0.2.1"
+  }
+}
