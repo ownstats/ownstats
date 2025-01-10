@@ -64,7 +64,7 @@ async function uploadFile(file) {
   const contentType = lookup(file.path) || 'application/octet-stream';
 
   const command = new PutObjectCommand({
-    Bucket: ownstats.backend.cdnS3BucketName,
+    Bucket: ownstats.backend.cdnBucketName,
     Key: key,
     Body: fileContent,
     ContentType: contentType,
