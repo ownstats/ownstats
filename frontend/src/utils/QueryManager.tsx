@@ -277,7 +277,7 @@ export default class QueryManager {
   }
 
   public async getPageviewsAndVisitors(domain: string, dateRange: DateRange): Promise<PageviewsAndVisitors[]> {
-    const query = `SELECT ${this.getDateGranularity(dateRange)}, sum(page_views_cnt::int) AS pageviewsCnt, sum(visitor_cnt) AS visitorsCnt FROM ${this.tableName} WHERE domain_name = '${domain}' AND event_date BETWEEN CAST('${format(dateRange.startDate, "yyyy-MM-dd")}' as date) AND CAST('${format(dateRange.endDate, "yyyy-MM-dd")}' as date) ${this.queryFilter} GROUP BY ${dateRange.granularity === "hourly" ? `event_hour` : `dateGranularity`} ORDER BY ${dateRange.granularity === "hourly" ? `event_hour` : `dateGranularity`} ASC`;
+    const query = `SELECT ${this.getDateGranularity(dateRange)}, sum(page_views_cnt::int) AS pageviewsCnt, sum(visitor_cnt) AS visitorsCnt FROM ${this.tableName} WHERE domain_name = '${domain}' AND event_date BETWEEN CAST('${format(dateRange.startDate, "yyyy-MM-dd")}' as date) AND CAST('${format(dateRange.endDate, "yyyy-MM-dd")}' as date) ${this.queryFilter} GROUP BY ${this.queryFilter.includes("event_date") ? `event_hour` : `dateGranularity`} ORDER BY ${this.queryFilter.includes("event_date") ? `event_hour` : `dateGranularity`} ASC`;
 
     const result = await this.runQuery(query);
 
