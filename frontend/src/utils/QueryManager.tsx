@@ -93,7 +93,7 @@ export default class QueryManager {
     this.db = props.db;
     this.currentDate = new Date();
     this.queryFilter = "";
-    this.tableName = "memory.stats"; //"data.aggregated_stats";
+    this.tableName = "memory.stats";
     this.dateRanges =  [
       {
         key: "today",
@@ -474,9 +474,9 @@ export default class QueryManager {
     await this.runQuery(query);
   }
 
-  public async checkIfTableExists(): Promise<boolean> {
+  public async checkIfTableExists(tableName: string = this.tableName): Promise<boolean> {
     try {
-      await this.runQuery(`SELECT * FROM ${this.tableName} LIMIT 1`);
+      await this.runQuery(`SELECT * FROM ${tableName} LIMIT 1`);
       return true;
     } catch (err) {
       return false;

@@ -28,7 +28,7 @@ export default function Dashboard() {
   // Use filter
   const { filter, setFilter } = useQueryFilter();
   // Use Data Manager
-  const { isLoaded, setIsLoaded } = useDataManager();
+  const { isLoaded, setIsLoaded, isDatabaseAttached, setIsDatabaseAttached, isStreamLoaded, setIsStreamLoaded } = useDataManager();
 
   // Create query manager
   const queryManager = new QueryManager({ db });
@@ -77,7 +77,21 @@ export default function Dashboard() {
 
     const attachQuery = `ATTACH 's3://${ownstatsConfig.s3.bucketName}/duckdb/data.duckdb' AS data;`;
 
-    await queryManager.runQuery(attachQuery);
+    try {
+      // Attach database
+      await queryManager.runQuery(attachQuery);
+      // Set database attached flag
+      setIsDatabaseAttached(true);
+    } catch (e: any) {
+      console.log(e);
+      toast.error(`Loading historical data... Error!`, { description: e.message });
+
+      // Set database attached flag
+      setIsDatabaseAttached(false);
+
+      // Create empty table to avoid error message when the view is queried
+      await queryManager.createTable("today_stats");
+    }
 
     // Stop timer
     if (enableTiming && startTimestamp) setQueryDuration((new Date().getTime() - startTimestamp));
@@ -90,6 +104,8 @@ export default function Dashboard() {
 
   const detachDatabase = async (): Promise<void> => {
     await queryManager.runQuery(`DETACH data`);
+    // Set database attached flag
+    setIsDatabaseAttached(false);
   }
 
   // See https://arrow.apache.org/docs/12.0/js/modules/Arrow_dom.html
@@ -146,6 +162,8 @@ export default function Dashboard() {
       if (!streamResponse.ok) {
         // Create empty table to avoid error message when the view is queried
         await queryManager.createTable("today_stats");
+        // Set stream loaded flag
+        setIsStreamLoaded(false);
         // Throw error
         throw new Error(`Failed to load current data!`);
       } else {
@@ -172,6 +190,9 @@ export default function Dashboard() {
         
         // Await all promises
         await Promise.all(ipcPromises);
+
+        // Set stream loaded flag
+        setIsStreamLoaded(true);
 
         toast.success(`Loading current data... Done!`, { description: `Took ${new Date().getTime() - startTimestamp}ms` });
       }
@@ -227,8 +248,6 @@ export default function Dashboard() {
     } else {
       // Set loaded state
       setIsLoaded(false);
-      // Re-run initialization
-      init(db!);
     }
   }
 
@@ -237,23 +256,33 @@ export default function Dashboard() {
       // Attach database with historical data
       await attachDatabase(true);
 
-      // Create view only with historical data until today's data is loaded
-      await queryManager.runQuery(`CREATE VIEW IF NOT EXISTS memory.stats AS SELECT * FROM data.aggregated_stats;`);
-      
-      // Load from table so that we can display historical data
-      await loadFromTable();
+      // Only execute if database is attached
+      if (isDatabaseAttached()) {
+        // Create view only with historical data until today's data is loaded
+        await queryManager.runQuery(`CREATE VIEW IF NOT EXISTS memory.stats AS SELECT * FROM data.aggregated_stats;`);
+
+        // Load from table so that we can display historical data
+        await loadFromTable();
+      }
 
       // Load today's data from Lambda function stream
       await getStreamData(db, true);
 
       // Drop view again
       await queryManager.runQuery(`DROP VIEW IF EXISTS memory.stats`);
-      
-      // Create view with today's data and historical data
-      await queryManager.runQuery(`CREATE VIEW IF NOT EXISTS memory.stats AS SELECT * FROM memory.today_stats UNION ALL SELECT * FROM data.aggregated_stats;`);
+
+      // Check if stream is loaded and database is attached
+      if (isStreamLoaded() && isDatabaseAttached()) {
+        // Create view with today's data and historical data
+        await queryManager.runQuery(`CREATE VIEW IF NOT EXISTS memory.stats AS SELECT * FROM memory.today_stats UNION ALL SELECT * FROM data.aggregated_stats;`);
+      } else {
+        // Create view with today's data only (an empty memory.today_stats table is created if the stream is not loaded, so no additional checking here)
+        await queryManager.runQuery(`CREATE VIEW IF NOT EXISTS memory.stats AS SELECT * FROM memory.today_stats`);
+      }
 
       // Get unique domains
       const uniqueDomains = await queryManager.getUniqueDomainNames();
+
       // Set unique domains
       setDomains(uniqueDomains);
       // Set current domain
@@ -275,6 +304,7 @@ export default function Dashboard() {
     // Reset state values
     setQueryDuration(undefined);
     setQueryStartTimestamp(undefined);
+    setIsStreamLoaded(false);
     setIsLoaded(false);
 
     // Trigger reload
@@ -302,6 +332,13 @@ export default function Dashboard() {
         }
       }
     }
+
+    // Cleanup (also for reload, otherwise state is not reset)
+    return () => {
+      setIsDatabaseAttached(false);
+      setIsStreamLoaded(false);
+      setIsLoaded(false);
+    };
   }, [db, isAuthenticated, isLoaded]);
   
   return (
