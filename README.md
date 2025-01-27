@@ -15,4 +15,4 @@ The current version of Ownstats is described (and further developed) in a series
 * A local installation of [npm](https://docs.npmjs.com/cli/v11/commands/npm)
 
 ## Documentation
-The documentation for the current version of Ownstats is available at [ownstats.com/docs](https://ownstats.com/docs).
+The documentation for the current version of Ownstats is available at [docs.ownstats.com](https://docs.ownstats.com).
