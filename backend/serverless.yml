@@ -144,7 +144,7 @@ functions:
   aggregateStats:
     runtime: nodejs18.x
     handler: functions/querying/aggregateStats.handler
-    memorySize: 2048
+    memorySize: 4096
     timeout: 900
     iamRoleStatements:
       - Effect: Allow
@@ -193,7 +193,7 @@ functions:
   aggregateHourlyStats:
     runtime: nodejs18.x
     handler: functions/querying/aggregateHourlyStats.handler
-    memorySize: 2048
+    memorySize: 4096
     timeout: 900
     iamRoleStatements:
       - Effect: Allow

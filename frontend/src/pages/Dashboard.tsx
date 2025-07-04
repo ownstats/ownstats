@@ -270,14 +270,14 @@ export default function Dashboard() {
 
       // Drop view again
       await queryManager.runQuery(`DROP VIEW IF EXISTS memory.stats`);
-
+      
       // Check if stream is loaded and database is attached
       if (isStreamLoaded() && isDatabaseAttached()) {
         // Create view with today's data and historical data
         await queryManager.runQuery(`CREATE VIEW IF NOT EXISTS memory.stats AS SELECT * FROM memory.today_stats UNION ALL SELECT * FROM data.aggregated_stats;`);
-      } else {
+      } else if (isDatabaseAttached()) {
         // Create view with today's data only (an empty memory.today_stats table is created if the stream is not loaded, so no additional checking here)
-        await queryManager.runQuery(`CREATE VIEW IF NOT EXISTS memory.stats AS SELECT * FROM memory.today_stats`);
+        await queryManager.runQuery(`CREATE VIEW IF NOT EXISTS memory.stats AS SELECT * FROM data.aggregated_stats;`);
       }
 
       // Get unique domains
@@ -300,6 +300,9 @@ export default function Dashboard() {
 
     // Detach database
     await detachDatabase();
+
+    // Drop view
+    await queryManager.runQuery(`DROP VIEW IF EXISTS memory.stats`);
 
     // Reset state values
     setQueryDuration(undefined);
@@ -335,6 +338,7 @@ export default function Dashboard() {
 
     // Cleanup (also for reload, otherwise state is not reset)
     return () => {
+      detachDatabase();
       setIsDatabaseAttached(false);
       setIsStreamLoaded(false);
       setIsLoaded(false);
